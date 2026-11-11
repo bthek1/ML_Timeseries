@@ -47,7 +47,7 @@ rewriting the data pipeline each time.
 | Page | Covers |
 |----|----|
 | [Darts](100_Darts.ipynb) | The long tour: training and predicting, inspecting seasonality, hyper-parameter search with Theta, backtesting against history, global models trained across many series, N-BEATS for the deep learning case, covariates and encoders for external data, and probabilistic forecasts with their distributions |
-| [Hyper-parameter Optimization](101_Hyperparameter%20Optimization.ipynb) | Tuning a deep model for electricity load with confidence intervals: a linear baseline, then TCN, then Optuna over its parameters, then picking the winner |
+| [Hyper-parameter Optimization](101_Hyperparameter_Optimization.ipynb) | Tuning a deep model for electricity load with confidence intervals: a linear baseline, then TCN, then Optuna over its parameters, then picking the winner |
 | [FFT Forecasting](FFT/102_FFT-examples.ipynb) | Darts’ Fourier-transform model on strongly seasonal data, improved in stages by cropping the training set, filtering low-amplitude waves, and detrending |
 
 ------------------------------------------------------------------------
@@ -60,16 +60,16 @@ several on electricity data that matches the project brief.
 
 | Page | Covers |
 |----|----|
-| [StatsForecast](Nixtla/300_Nixtla%20-%20StatsForecasting.ipynb) | Training many statistical models over many series at once, evaluating them, and selecting the best per series |
+| [StatsForecast](Nixtla/300_Nixtla_StatsForecasting.ipynb) | Training many statistical models over many series at once, evaluating them, and selecting the best per series |
 | [Electricity Load Forecast](Nixtla/301_ElectricityLoadForecasting.ipynb) | MSTL, for load data carrying more than one seasonality at once |
 | [Detect Demand Peaks](Nixtla/302_ElectricityPeakForecasting.ipynb) | Forecasting the ERCOT market to catch daily peaks rather than the whole curve |
-| [MLForecast](Nixtla/320_Nixtla%20-%20MLForecast.ipynb) | The machine learning arm, including distributed training via Spark and LightGBM |
-| [NeuralForecast](Nixtla/330_Nixtla%20-%20NeuralForecast.ipynb) | Fitting LSTM and NHITS on AirPassengers, then plotting the predictions |
-| [Exogenous Variables](Nixtla/331_Nixtla%20-%20Exogenous_Variables.ipynb) | Training and forecasting with external inputs, both historical and known-future |
-| [Save and Load Models](Nixtla/333_Nixtla%20-%20Neural_save_and_load.ipynb) | Persisting a trained neural forecaster and reading it back |
-| [Neural Advanced](Nixtla/334_Nixtla%20-%20Neural_Advanced.ipynb) | The multi-series version: train several neural models, evaluate, and select per series |
-| [All Methods](Nixtla/335_Nixtla%20-%20All_Methods.ipynb) | The comparison that ties the stack together. Statistical, machine learning, and neural forecasts over the M5 dataset, cross-validated and evaluated per series and per window |
-| [Hierarchical Forecast](Nixtla/310_Nixtla%20-%20HierarchicalForecast.ipynb) | Placeholder. A title and a link, no content yet |
+| [MLForecast](Nixtla/320_Nixtla_MLForecast.ipynb) | The machine learning arm, including distributed training via Spark and LightGBM |
+| [NeuralForecast](Nixtla/330_Nixtla_NeuralForecast.ipynb) | Fitting LSTM and NHITS on AirPassengers, then plotting the predictions |
+| [Exogenous Variables](Nixtla/331_Nixtla_Exogenous_Variables.ipynb) | Training and forecasting with external inputs, both historical and known-future |
+| [Save and Load Models](Nixtla/333_Nixtla_Neural_save_and_load.ipynb) | Persisting a trained neural forecaster and reading it back |
+| [Neural Advanced](Nixtla/334_Nixtla_Neural_Advanced.ipynb) | The multi-series version: train several neural models, evaluate, and select per series |
+| [All Methods](Nixtla/335_Nixtla_All_Methods.ipynb) | The comparison that ties the stack together. Statistical, machine learning, and neural forecasts over the M5 dataset, cross-validated and evaluated per series and per window |
+| [Hierarchical Forecast](Nixtla/310_Nixtla_HierarchicalForecast.ipynb) | Placeholder. A title and a link, no content yet |
 
 ------------------------------------------------------------------------
 
@@ -97,7 +97,7 @@ Stated plainly, so the gaps are not mistaken for oversights:
 - **Three stubs.** [Financial Analysis](20_Financial_Analysis.ipynb) is
   a single unticked to-do about the US Treasury yield curve,
   [Hierarchical
-  Forecast](Nixtla/310_Nixtla%20-%20HierarchicalForecast.ipynb) is a
+  Forecast](Nixtla/310_Nixtla_HierarchicalForecast.ipynb) is a
   bare link, and the two `xplainable` pages duplicate each other.
 - **sktime** is named as a candidate framework in the brief but never
   evaluated.
