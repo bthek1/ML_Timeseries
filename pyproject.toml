@@ -28,4 +28,5 @@ version = {attr = "TimeSeries_ML.__version__"}
 include = ["TimeSeries_ML"]
 
 [tool.nbdev]
+custom_sidebar = true
 jupyter_hooks = true
