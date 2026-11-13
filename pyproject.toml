@@ -3,7 +3,7 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "TimeSeries_ML"
+name = "ML_Timeseries"
 dynamic = ["version"]
 description = "Machine Learning Time Series Analysis"
 readme = "README.md"
@@ -15,17 +15,17 @@ classifiers = ["Natural Language :: English", "Intended Audience :: Developers",
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/bthek1/TimeSeries_ML"
-Documentation = "https://bthek1.github.io/TimeSeries_ML"
+Repository = "https://github.com/bthek1/ML_Timeseries"
+Documentation = "https://bthek1.github.io/ML_Timeseries"
 
 [project.entry-points.nbdev]
-TimeSeries_ML = "TimeSeries_ML._modidx:d"
+ML_Timeseries = "ML_Timeseries._modidx:d"
 
 [tool.setuptools.dynamic]
-version = {attr = "TimeSeries_ML.__version__"}
+version = {attr = "ML_Timeseries.__version__"}
 
 [tool.setuptools.packages.find]
-include = ["TimeSeries_ML"]
+include = ["ML_Timeseries"]
 
 [tool.nbdev]
 custom_sidebar = true

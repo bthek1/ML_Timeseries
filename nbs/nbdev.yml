@@ -2,11 +2,11 @@ project:
   output-dir: _docs
 
 website:
-  title: "TimeSeries_ML"
-  site-url: "https://bthek1.github.io/TimeSeries_ML"
+  title: "ML_Timeseries"
+  site-url: "https://bthek1.github.io/ML_Timeseries"
   description: "Machine Learning Time Series Analysis"
   repo-branch: main
-  repo-url: "https://github.com/bthek1/TimeSeries_ML"
+  repo-url: "https://github.com/bthek1/ML_Timeseries"
 
 format-links:
   - html
