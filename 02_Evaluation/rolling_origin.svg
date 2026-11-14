@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" width="720" height="320" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>Rolling-origin backtest: each window trains on everything before its origin and forecasts the next 24 hours</title>
+  <rect x="0" y="0" width="720" height="320" fill="none"/>
+  <g fill="#888">
+    <text x="20" y="28" font-weight="bold">Rolling-origin backtest</text>
+    <text x="20" y="64">window 1</text>
+    <text x="20" y="104">window 2</text>
+    <text x="20" y="144">window 3</text>
+    <text x="20" y="174">...</text>
+    <text x="20" y="214">window 30</text>
+  </g>
+  <g>
+    <rect x="110" y="50" width="330" height="20" rx="3" fill="#4c78a8"/>
+    <rect x="440" y="50" width="26" height="20" rx="3" fill="#f58518"/>
+    <rect x="110" y="90" width="360" height="20" rx="3" fill="#4c78a8"/>
+    <rect x="470" y="90" width="26" height="20" rx="3" fill="#f58518"/>
+    <rect x="110" y="130" width="390" height="20" rx="3" fill="#4c78a8"/>
+    <rect x="500" y="130" width="26" height="20" rx="3" fill="#f58518"/>
+    <rect x="110" y="200" width="560" height="20" rx="3" fill="#4c78a8"/>
+    <rect x="670" y="200" width="26" height="20" rx="3" fill="#f58518"/>
+  </g>
+  <g stroke="#888" stroke-width="1" stroke-dasharray="3 3">
+    <line x1="440" y1="44" x2="440" y2="76"/>
+    <line x1="470" y1="84" x2="470" y2="116"/>
+    <line x1="500" y1="124" x2="500" y2="156"/>
+    <line x1="670" y1="194" x2="670" y2="226"/>
+  </g>
+  <g fill="#888">
+    <text x="440" y="40" text-anchor="middle">origin</text>
+    <text x="485" y="80" text-anchor="middle">+5 days</text>
+    <path d="M110 250 H696" stroke="#888" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+    <text x="110" y="270">Dec 2006</text>
+    <text x="696" y="270" text-anchor="end">Nov 2010</text>
+    <text x="400" y="270" text-anchor="middle">time</text>
+  </g>
+  <g>
+    <rect x="110" y="282" width="14" height="12" rx="2" fill="#4c78a8"/>
+    <text x="130" y="292" fill="#888">history the model may use (refit or update allowed)</text>
+    <rect x="110" y="302" width="14" height="12" rx="2" fill="#f58518"/>
+    <text x="130" y="312" fill="#888">24-hour forecast, scored</text>
+  </g>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#888"/>
+    </marker>
+  </defs>
+</svg>

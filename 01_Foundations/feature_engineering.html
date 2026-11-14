@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.11.9">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Benedict Thekkel">
+<meta name="description" content="Lags, calendar and holiday features, Fourier terms, rolling statistics and exogenous sub-meters, added one group at a time and scored on the backtest, plus catch22 features that describe a whole day’s shape.">
+
+<title>Feature Engineering – ML_Timeseries</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../01_Foundations/fft_analysis.html" rel="next">
+<link href="../01_Foundations/data_preparation.html" rel="prev">
+<link href="../favi.svg" rel="icon" type="image/svg+xml">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-447e42e69aaa9833c0ba1b986f430b20.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-8e10d5f78f84c68f34904ffd70ceca7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-e0bec6286bfda571ec17f309cbd30a0a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-8e10d5f78f84c68f34904ffd70ceca7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+<meta property="og:title" content="Feature Engineering – ML_Timeseries">
+<meta property="og:description" content="Lags, calendar and holiday features, Fourier terms, rolling statistics and exogenous sub-meters, added one group at a time and scored on the backtest, plus catch22 features that describe a whole day’s shape.">
+<meta property="og:image" content="https://bthek1.github.io/ML_Timeseries/Logo.svg">
+<meta property="og:site_name" content="ML_Timeseries">
+<meta name="twitter:title" content="Feature Engineering – ML_Timeseries">
+<meta name="twitter:description" content="Lags, calendar and holiday features, Fourier terms, rolling statistics and exogenous sub-meters, added one group at a time and scored on the backtest, plus catch22 features that describe a whole day’s shape.">
+<meta name="twitter:image" content="https://bthek1.github.io/ML_Timeseries/Logo.svg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          toggle.setAttribute("aria-checked", alternate ? "true" : "false");
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+    }
+    // Hack to workaround the fact that safari doesn't
+    // properly recolor the scrollbar when toggling (#1455).
+    // Not run on load: stylesheets are set before first paint there, and
+    // scrolling would undo the scroll to a URL fragment (#14973).
+    // The one pixel nudge keeps the reader where they were.
+    const refreshSafariScrollbar = () => {
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        const scrollY = window.scrollY;
+        window.scrollTo(0, scrollY > 0 ? scrollY - 1 : 1);
+        setTimeout(() => {
+          window.scrollTo(0, scrollY);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const queryPrefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const darkModeDefault = queryPrefersDark.matches;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      refreshSafariScrollbar();
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    queryPrefersDark.addEventListener("change", e => {
+      if(window.localStorage.getItem("quarto-color-scheme") !== null)
+        return;
+      const alternate = e.matches
+      toggleColorMode(alternate);
+      refreshSafariScrollbar();
+      localAlternateSentinel = e.matches ? 'alternate' : 'default'; // this is used alongside local storage!
+      toggleGiscusIfUsed(alternate, darkModeDefault);
+    });
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark" aria-label="Site">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../Logo.svg" alt="Benedict Thekkel" class="navbar-logo light-content">
+    <img src="../Logo.svg" alt="Benedict Thekkel" class="navbar-logo dark-content">
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-docs" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Docs</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-docs">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/bthek1_blog/">
+ <span class="dropdown-text">Blog</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Ideas/">
+ <span class="dropdown-text">Ideas</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Other/">
+ <span class="dropdown-text">Other</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-business" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Business</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-business">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Business_docs/">
+ <span class="dropdown-text">Business Docs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Finances/">
+ <span class="dropdown-text">Finances</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-web" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Web</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-web">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Web_development/">
+ <span class="dropdown-text">Web Development</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Front_End/">
+ <span class="dropdown-text">Front End</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Back_End/">
+ <span class="dropdown-text">Back End</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/IaaS_docs/">
+ <span class="dropdown-text">IaaS Docs</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-machine-learning" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Machine Learning</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-machine-learning">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ML_methods/">
+ <span class="dropdown-text">ML Methods</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ML_Timeseries/">
+ <span class="dropdown-text">ML Timeseries</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-deep-learning" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Deep Learning</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-deep-learning">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/FastAI_course/">
+ <span class="dropdown-text">FastAI course</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/DL_methods/">
+ <span class="dropdown-text">DL Methods</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/DL_tasks/">
+ <span class="dropdown-text">DL Tasks</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-tools" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Tools</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-tools">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Software_Tools/">
+ <span class="dropdown-text">Software Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Hardware_Tools/">
+ <span class="dropdown-text">Hardware Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Electrical_Docs/">
+ <span class="dropdown-text">Electrical Docs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Python_Libs/">
+ <span class="dropdown-text">Python Libs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/nbdevAuto/">
+ <span class="dropdown-text">Nbdev Automation</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ROS2_docs/">
+ <span class="dropdown-text">ROS2 Docs</span></a>
+  </li>  
+    </ul>
+  </li>
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools tools-wide">
+    <div class="dropdown">
+      <a href="" title="" id="quarto-navigation-tool-dropdown-0" class="quarto-navigation-tool dropdown-toggle px-1" data-bs-toggle="dropdown" aria-expanded="false" role="link" aria-label="Github"><i class="bi bi-github"></i></a>
+      <ul class="dropdown-menu" aria-labelledby="quarto-navigation-tool-dropdown-0">
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries">
+              <i class="bi bi-code-slash pe-1"></i>
+            Source Code
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues/new">
+              <i class="bi bi-bug pe-1"></i>
+            Report a Bug
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues/new">
+              <i class="bi bi-chat-right-text pe-1"></i>
+            Ask a Question
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues">
+              <i class="bi bi-list-ul pe-1"></i>
+            All Issues
+            </a>
+          </li>
+      </ul>
+    </div>
+    <a href="https://www.linkedin.com/in/benedict-thekkel/" title="" class="quarto-navigation-tool px-1" aria-label="Linkedin"><i class="bi bi-linkedin"></i></a>
+  <button type="button" role="switch" aria-checked="false" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode" aria-label="Toggle dark mode"><i class="bi"></i></button>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+            <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" aria-label="Toolbar">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01_Foundations/datasets.html">01 Foundations</a></li><li class="breadcrumb-item"><a href="../01_Foundations/feature_engineering.html">Feature Engineering</a></li></ol></nav>
+        <a class="flex-grow-1" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto" aria-label="Section">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimeSeries ML</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Phisaver Project</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-controls="quarto-sidebar-section-1" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-1-label">01 Foundations</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-1" aria-labelledby="quarto-sidebar-section-1-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/datasets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datasets</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/decomposition_stationarity.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Decomposition and Stationarity</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/data_preparation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data Preparation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/feature_engineering.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Feature Engineering</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/fft_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">FFT analysis</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-controls="quarto-sidebar-section-2" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-2-label">02 Evaluation</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-2" aria-labelledby="quarto-sidebar-section-2-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/backtesting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Backtesting and Leakage</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/forecast_metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forecast Metrics</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Benchmarks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/scoreboard.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scoreboard</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-controls="quarto-sidebar-section-3" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-3-label">03 Classical</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-3" aria-labelledby="quarto-sidebar-section-3-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/baselines.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Baselines</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/ets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Exponential Smoothing (ETS)</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/arima.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ARIMA</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/theta_intermittent.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Theta and Intermittent Demand</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/state_space_kalman.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">State Space Models and the Kalman Filter</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/var_granger.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VAR and Granger Causality</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/garch.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">GARCH: Forecasting the Variance</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/prophet.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hourly Time Series Forecasting using Facebook’s Prophet</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-controls="quarto-sidebar-section-4" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-4-label">04 Machine Learning</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-4" aria-labelledby="quarto-sidebar-section-4-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/forecasting_as_regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forecasting as Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/multistep_strategies.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multi-step Strategies</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/global_vs_local.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Global vs Local Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/xgboost.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XGBoost</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/xgboost_energy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XGBoost: Forecast Energy Consumption</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-controls="quarto-sidebar-section-5" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-5-label">05 Deep Learning</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-5" aria-labelledby="quarto-sidebar-section-5-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/dl_data_pipeline.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Deep Learning Data Pipeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/rnn_lstm_deepar.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">RNN, LSTM and DeepAR</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/mlp_family.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The MLP Family: N-BEATS, N-HiTS, TiDE and DLinear</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/transformers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transformers for Time Series: PatchTST, iTransformer and TFT</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/nbeats_from_scratch.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">N-BEATS from Scratch</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-controls="quarto-sidebar-section-6" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-6-label">06 Foundation Models</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-6" aria-labelledby="quarto-sidebar-section-6-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/chronos2_zero_shot.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Chronos-2 Zero-Shot</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/foundation_model_comparison.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Foundation Model Comparison</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/fine_tuning.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Fine-Tuning Chronos-2</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/small_models_on_cpu.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Small Models on CPU</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-controls="quarto-sidebar-section-7" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-7-label">07 Probabilistic</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-7" aria-labelledby="quarto-sidebar-section-7-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../07_Probabilistic/probabilistic_forecasting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Probabilistic Forecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../07_Probabilistic/conformal_prediction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Conformal Prediction</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-controls="quarto-sidebar-section-8" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-8-label">08 Other Tasks</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-8" aria-labelledby="quarto-sidebar-section-8-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/anomaly_detection.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Anomaly Detection</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/change_point_detection.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Change-Point Detection</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/matrix_profile.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Matrix Profile: Motifs and Discords</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/classification_minirocket.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Time Series Classification with MiniRocket</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-controls="quarto-sidebar-section-9" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-9-label">09 Many Series</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-9" aria-labelledby="quarto-sidebar-section-9-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../09_Many_Series/hierarchical_reconciliation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hierarchical Reconciliation</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-10" aria-controls="quarto-sidebar-section-10" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-10-label">10 Production</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-10" aria-labelledby="quarto-sidebar-section-10-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/explainability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Explainability</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/drift_and_retraining.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Drift and Retraining</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/onnx_export.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ONNX Export</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-11" aria-controls="quarto-sidebar-section-11" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-11-label">Libraries</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-11" aria-labelledby="quarto-sidebar-section-11-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/darts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Darts</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/darts_hyperparameter_optimization.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Darts - Hyper-parameters Optimization for Electricity Load Forecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-12" aria-controls="quarto-sidebar-section-12" aria-expanded="false">
+ <span class="menu-text" id="quarto-sidebar-section-12-label">Nixtla</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-12" aria-labelledby="quarto-sidebar-section-12-label" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_statsforecasting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - StatsForecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_mlforecast.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - ML Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neuralforecast.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Neural Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_exogenous_variables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Exogenous Variables</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neural_save_and_load.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Neural Save and Load Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neural_advanced.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - Neural Advanced Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_all_methods.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Statistical, Machine Learning and Neural Forecasting methods</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" aria-labelledby="toc-title" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#features-turn-a-series-into-a-table" id="toc-features-turn-a-series-into-a-table" class="nav-link active" data-scroll-target="#features-turn-a-series-into-a-table">Features turn a series into a table</a></li>
+  <li><a href="#the-feature-groups" id="toc-the-feature-groups" class="nav-link" data-scroll-target="#the-feature-groups">1. The feature groups</a></li>
+  <li><a href="#one-group-at-a-time" id="toc-one-group-at-a-time" class="nav-link" data-scroll-target="#one-group-at-a-time">2. One group at a time</a></li>
+  <li><a href="#features-of-a-whole-series-catch22" id="toc-features-of-a-whole-series-catch22" class="nav-link" data-scroll-target="#features-of-a-whole-series-catch22">3. Features of a whole series: catch22</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.dev/bthek1/ML_Timeseries/blob/main/01_Foundations/03_Feature_Engineering.ipynb" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/bthek1/ML_Timeseries/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content" tabindex="-1">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01_Foundations/datasets.html">01 Foundations</a></li><li class="breadcrumb-item"><a href="../01_Foundations/feature_engineering.html">Feature Engineering</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Feature Engineering</h1>
+</div>
+
+<div>
+  <div class="description">
+    Lags, calendar and holiday features, Fourier terms, rolling statistics and exogenous sub-meters, added one group at a time and scored on the backtest, plus catch22 features that describe a whole day’s shape.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Benedict Thekkel </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<section id="features-turn-a-series-into-a-table" class="level2">
+<h2 class="anchored" data-anchor-id="features-turn-a-series-into-a-table">Features turn a series into a table</h2>
+<p>A tree model or a linear model cannot read a time series. It reads rows. Feature engineering builds, for each hour to forecast, a row of numbers that are <strong>known at the forecast origin</strong> and that carry information about that hour.</p>
+<p>Every feature here obeys the rule from <a href="../02_Evaluation/backtesting.html">Backtesting and Leakage</a>: it is computed from history plus an empty future, so a feature that would need a future value comes out empty instead of leaking. The model is the same throughout (scikit-learn’s histogram gradient boosting, trained once on everything before the first origin), so every change in score comes from the features.</p>
+<hr>
+<div id="ef5f85dc" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:48.395047+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:50.458620+00:00&quot;,&quot;total&quot;:2.0635803419999945}}" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.ensemble <span class="im">import</span> HistGradientBoostingRegressor</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.linear_model <span class="im">import</span> LogisticRegression</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.model_selection <span class="im">import</span> cross_val_score</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.pipeline <span class="im">import</span> make_pipeline</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.preprocessing <span class="im">import</span> StandardScaler</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sktime.transformations.panel.catch22 <span class="im">import</span> Catch22</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ML_Timeseries.backtest <span class="im">import</span> backtest, future_index, origins, record, score</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ML_Timeseries.data <span class="im">import</span> bar_chart, load_household, show</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> threadpoolctl <span class="im">import</span> threadpool_limits</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># nbdev-test runs pages in parallel; per-page OpenMP pools on 4 cores made the gradient-boosting pages 30x slower.</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> threadpool_limits(<span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="c69bbc4f" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>hh <span class="op">=</span> load_household()</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>y, FILLED <span class="op">=</span> hh[<span class="st">"kwh"</span>], hh[<span class="st">"filled"</span>]</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>cut <span class="op">=</span> origins(y.index)[<span class="dv">0</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="the-feature-groups" class="level2">
+<h2 class="anchored" data-anchor-id="the-feature-groups">1. The feature groups</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Group</th>
+<th>Features</th>
+<th>Idea</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Seasonal lags</strong></td>
+<td>the value 24, 48, 168 and 336 hours earlier</td>
+<td>the <a href="../01_Foundations/decomposition_stationarity.html">autocorrelation</a> peaks; every lag is at least the 24-hour horizon</td>
+</tr>
+<tr class="even">
+<td><strong>Calendar</strong></td>
+<td>hour, day of week, month, French public holiday</td>
+<td>behaviour follows the clock and the calendar</td>
+</tr>
+<tr class="odd">
+<td><strong>Fourier terms</strong></td>
+<td>sine and cosine pairs at the daily, weekly and annual periods</td>
+<td>smooth seasonal shapes a tree can split on, including the annual cycle that four lags cannot see</td>
+</tr>
+<tr class="even">
+<td><strong>Rolling statistics</strong></td>
+<td>mean and standard deviation of the last day, mean of the last week, mean of the same hour over the last four weeks (all ending at the origin)</td>
+<td>the recent level and volatility</td>
+</tr>
+<tr class="odd">
+<td><strong>Sub-meter lags</strong></td>
+<td>kitchen, laundry, water heater and voltage, 24 hours earlier</td>
+<td>exogenous series: does knowing <em>which</em> appliances ran yesterday help?</td>
+</tr>
+</tbody>
+</table>
+<p>French public holidays: the eight fixed dates plus Easter Monday, Ascension Thursday and Whit Monday, computed from the date of Easter.</p>
+<hr>
+<div id="9cd206ee" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:50.466521+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:50.477394+00:00&quot;,&quot;total&quot;:0.010876642000013703}}" data-execution_count="4">
+<hr>
+<p><a href="https://github.com/bthek1/ML_Timeseries/blob/main/ML_Timeseries/features.py#L32" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="make_features" class="level3">
+<h3 class="anchored" data-anchor-id="make_features">make_features</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> make_features(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    s:pandas.core.series.Series, groups:<span class="bu">tuple</span><span class="op">=</span>(<span class="st">'calendar'</span>, <span class="st">'fourier'</span>, <span class="st">'rolling'</span>),</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    exog:pandas.core.frame.DataFrame <span class="op">|</span> <span class="va">None</span><span class="op">=</span><span class="va">None</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>)<span class="op">-&gt;</span>pandas.core.frame.DataFrame:</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><em>Feature table for <code>s</code>: seasonal lags (24 to 336 h) plus the named groups; every feature is known 24 h ahead.</em></p>
+</section>
+</div>
+<div id="f64d1883" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:50.477556+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:50.482079+00:00&quot;,&quot;total&quot;:0.004528203999996094}}" data-execution_count="5">
+<hr>
+<p><a href="https://github.com/bthek1/ML_Timeseries/blob/main/ML_Timeseries/features.py#L19" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="french_holidays" class="level3">
+<h3 class="anchored" data-anchor-id="french_holidays">french_holidays</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> french_holidays(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    years</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">-&gt;</span>pandas.core.indexes.datetimes.DatetimeIndex:</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><em>French public holidays: eight fixed dates plus Easter Monday, Ascension and Whit Monday.</em></p>
+</section>
+</div>
+</section>
+<section id="one-group-at-a-time" class="level2">
+<h2 class="anchored" data-anchor-id="one-group-at-a-time">2. One group at a time</h2>
+<p>Each step adds one group to the previous set, trains the model and runs the full 30-window backtest. Sub-meter values are cut at the origin too: the forecaster sees <code>hh.loc[:origin]</code>, nothing later.</p>
+<hr>
+<div id="c0d51480" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> gbm_forecaster(groups):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    train <span class="op">=</span> y.iloc[:cut]</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> HistGradientBoostingRegressor(max_iter<span class="op">=</span><span class="dv">300</span>, learning_rate<span class="op">=</span><span class="fl">0.05</span>, random_state<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    model.fit(make_features(train, groups, hh).iloc[<span class="dv">700</span>:], train.iloc[<span class="dv">700</span>:])</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> f(history, horizon):</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        ext <span class="op">=</span> pd.concat([history, pd.Series(np.nan, index<span class="op">=</span>future_index(history, horizon))])</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> model.predict(make_features(ext, groups, hh.loc[:history.index[<span class="op">-</span><span class="dv">1</span>]]).iloc[<span class="op">-</span>horizon:])</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> f</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>steps <span class="op">=</span> [(<span class="st">"seasonal lags"</span>, ()), (<span class="st">"+ calendar"</span>, (<span class="st">"calendar"</span>,)), (<span class="st">"+ Fourier"</span>, (<span class="st">"calendar"</span>, <span class="st">"fourier"</span>)),</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>         (<span class="st">"+ rolling"</span>, (<span class="st">"calendar"</span>, <span class="st">"fourier"</span>, <span class="st">"rolling"</span>)), (<span class="st">"+ sub-meters"</span>, (<span class="st">"calendar"</span>, <span class="st">"fourier"</span>, <span class="st">"rolling"</span>, <span class="st">"submeters"</span>))]</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>ablation <span class="op">=</span> {}</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, groups <span class="kw">in</span> steps:</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    ablation[name] <span class="op">=</span> score(backtest(y, gbm_forecaster(groups)), y, exclude<span class="op">=</span>FILLED)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>abl <span class="op">=</span> pd.DataFrame(ablation).T[[<span class="st">"mase"</span>, <span class="st">"skill"</span>, <span class="st">"mae"</span>, <span class="st">"seconds"</span>]]</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>abl.style.<span class="bu">format</span>({<span class="st">"mase"</span>: <span class="st">"</span><span class="sc">{:.3f}</span><span class="st">"</span>, <span class="st">"skill"</span>: <span class="st">"</span><span class="sc">{:+.1%}</span><span class="st">"</span>, <span class="st">"mae"</span>: <span class="st">"</span><span class="sc">{:.3f}</span><span class="st">"</span>, <span class="st">"seconds"</span>: <span class="st">"</span><span class="sc">{:.1f}</span><span class="st">"</span>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+</style>
+
+<table id="T_e2608" class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th class="blank level0" data-quarto-table-cell-role="th">&nbsp;</th>
+<th id="T_e2608_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">mase</th>
+<th id="T_e2608_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">skill</th>
+<th id="T_e2608_level0_col2" class="col_heading level0 col2" data-quarto-table-cell-role="th">mae</th>
+<th id="T_e2608_level0_col3" class="col_heading level0 col3" data-quarto-table-cell-role="th">seconds</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th id="T_e2608_level0_row0" class="row_heading level0 row0" data-quarto-table-cell-role="th">seasonal lags</th>
+<td id="T_e2608_row0_col0" class="data row0 col0">0.726</td>
+<td id="T_e2608_row0_col1" class="data row0 col1">+9.2%</td>
+<td id="T_e2608_row0_col2" class="data row0 col2">0.474</td>
+<td id="T_e2608_row0_col3" class="data row0 col3">0.0</td>
+</tr>
+<tr class="even">
+<th id="T_e2608_level0_row1" class="row_heading level0 row1" data-quarto-table-cell-role="th">+ calendar</th>
+<td id="T_e2608_row1_col0" class="data row1 col0">0.677</td>
+<td id="T_e2608_row1_col1" class="data row1 col1">+15.5%</td>
+<td id="T_e2608_row1_col2" class="data row1 col2">0.442</td>
+<td id="T_e2608_row1_col3" class="data row1 col3">0.1</td>
+</tr>
+<tr class="odd">
+<th id="T_e2608_level0_row2" class="row_heading level0 row2" data-quarto-table-cell-role="th">+ Fourier</th>
+<td id="T_e2608_row2_col0" class="data row2 col0">0.670</td>
+<td id="T_e2608_row2_col1" class="data row2 col1">+16.7%</td>
+<td id="T_e2608_row2_col2" class="data row2 col2">0.435</td>
+<td id="T_e2608_row2_col3" class="data row2 col3">0.3</td>
+</tr>
+<tr class="even">
+<th id="T_e2608_level0_row3" class="row_heading level0 row3" data-quarto-table-cell-role="th">+ rolling</th>
+<td id="T_e2608_row3_col0" class="data row3 col0">0.665</td>
+<td id="T_e2608_row3_col1" class="data row3 col1">+17.0%</td>
+<td id="T_e2608_row3_col2" class="data row3 col2">0.434</td>
+<td id="T_e2608_row3_col3" class="data row3 col3">0.4</td>
+</tr>
+<tr class="odd">
+<th id="T_e2608_level0_row4" class="row_heading level0 row4" data-quarto-table-cell-role="th">+ sub-meters</th>
+<td id="T_e2608_row4_col0" class="data row4 col0">0.669</td>
+<td id="T_e2608_row4_col1" class="data row4 col1">+16.4%</td>
+<td id="T_e2608_row4_col2" class="data row4 col2">0.437</td>
+<td id="T_e2608_row4_col3" class="data row4 col3">0.5</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="453988c7" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>show(bar_chart(abl.index, {<span class="st">"skill vs seasonal naive"</span>: abl.skill}, height<span class="op">=</span><span class="st">"320px"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+
+<script>
+    require.config({paths: {'echarts':'https://cdn.jsdelivr.net/gh/pyecharts/pyecharts-assets@f2328d558550046fc5449672a6850e848e141590/assets/v6/echarts.min'}});
+</script>
+
+        <div id="cc41107ba9a24c349f2cfac8b9d879b1" style="width:100%; height:320px;"></div>
+
+<script>
+        require(['echarts'], function(echarts) {var chart_cc41107ba9a24c349f2cfac8b9d879b1 = echarts.init(
+                    document.getElementById('cc41107ba9a24c349f2cfac8b9d879b1'), 'white', {renderer: 'canvas', locale: 'ZH'});
+                var option_cc41107ba9a24c349f2cfac8b9d879b1 = {"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0,"aria": {"enabled": false},"series": [{"type": "bar","name": "skill vs seasonal naive","legendHoverLink": true,"data": [0.0924,0.1547,0.1669,0.1704,0.1643],"realtimeSort": false,"showBackground": false,"stackStrategy": "samesign","cursor": "pointer","barMinHeight": 0,"barCategoryGap": "20%","barGap": "30%","large": false,"largeThreshold": 400,"seriesLayoutBy": "column","datasetIndex": 0,"clip": true,"zlevel": 0,"z": 2,"label": {"show": false,"margin": 8,"richInheritPlainLabel": true,"valueAnimation": false}}],"legend": [{"data": ["skill vs seasonal naive"],"selected": {},"show": true,"top": "0","padding": 5,"itemGap": 10,"itemWidth": 25,"itemHeight": 14,"backgroundColor": "transparent","borderColor": "#ccc","borderRadius": 0,"pageButtonItemGap": 5,"pageButtonPosition": "end","pageFormatter": "{current}/{total}","pageIconColor": "#2f4554","pageIconInactiveColor": "#aaa","pageIconSize": 15,"animationDurationUpdate": 800,"selector": false,"selectorPosition": "auto","selectorItemGap": 7,"selectorButtonGap": 10,"triggerEvent": false}],"tooltip": {"show": true,"trigger": "axis","triggerOn": "mousemove|click","axisPointer": {"type": "line"},"showContent": true,"alwaysShowContent": false,"showDelay": 0,"hideDelay": 100,"enterable": false,"confine": false,"appendToBody": false,"transitionDuration": 0.4,"displayTransition": true,"textStyle": {"fontSize": 14,"richInheritPlainLabel": true},"borderWidth": 0,"padding": 5,"order": "seriesAsc"},"xAxis": [{"show": true,"scale": false,"nameLocation": "end","nameGap": 15,"nameTruncate": {},"nameMoveOverlap": true,"axisLabel": {"show": true,"rotate": 30,"margin": 8,"richInheritPlainLabel": true,"valueAnimation": false},"inverse": false,"offset": 0,"splitNumber": 5,"minInterval": 0,"silent": false,"triggerEvent": false,"splitLine": {"show": true,"lineStyle": {"show": false}},"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0,"data": ["seasonal lags","+ calendar","+ Fourier","+ rolling","+ sub-meters"]}],"yAxis": [{"show": true,"scale": false,"nameLocation": "end","nameGap": 15,"nameTruncate": {},"nameMoveOverlap": true,"inverse": false,"offset": 0,"splitNumber": 5,"minInterval": 0,"silent": false,"triggerEvent": false,"splitLine": {"show": true,"lineStyle": {"show": false}},"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0}],"title": [{"show": true,"target": "blank","subtarget": "blank","padding": 5,"itemGap": 10,"textAlign": "auto","textVerticalAlign": "auto","triggerEvent": false}],"grid": {"show": false,"zlevel": 0,"z": 2,"left": "10px","top": "60px","right": "30px","bottom": "10px","containLabel": true,"backgroundColor": "transparent","borderColor": "#ccc","borderWidth": 1,"shadowOffsetX": 0,"shadowOffsetY": 0}};
+                chart_cc41107ba9a24c349f2cfac8b9d879b1.setOption(option_cc41107ba9a24c349f2cfac8b9d879b1);});
+    </script>
+</div>
+</div>
+<p>Reading the steps:</p>
+<ul>
+<li><strong>Seasonal lags alone</strong> already beat seasonal naive, because the model can weigh four past seasons instead of copying one.</li>
+<li><strong>The calendar is the largest single gain.</strong> Hour and day of week let the model learn the household’s routine directly instead of inferring it from lags, and the holiday flag catches days that look like Sundays.</li>
+<li><strong>Fourier terms</strong> add a little, mostly through the annual pair: four lags cannot know it is November.</li>
+<li><strong>Rolling statistics</strong> add almost nothing on top. The same-hour average they include is close to what the lags and calendar already give.</li>
+<li><strong>Sub-meters do not help.</strong> Knowing that the kitchen was busy yesterday says little about the total tomorrow beyond what the total itself says. An exogenous series earns its place only when it carries information the target does not, such as a weather forecast for heating load.</li>
+</ul>
+<p>The best set goes on the scoreboard as the first machine learning row.</p>
+<hr>
+<div id="d347d11a" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>best_name <span class="op">=</span> abl.mase.idxmin()</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>best_groups <span class="op">=</span> <span class="bu">dict</span>(steps)[best_name]</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>record(<span class="st">"Gradient boosting, engineered features"</span>, <span class="st">"machine learning"</span>, ablation[best_name],</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>       notebook<span class="op">=</span><span class="st">"01_Foundations/03_Feature_Engineering"</span>, notes<span class="op">=</span><span class="ss">f"lags + </span><span class="sc">{</span><span class="st">', '</span><span class="sc">.</span>join(best_groups)<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"recorded: </span><span class="sc">{</span>best_name<span class="sc">}</span><span class="ss">, MASE </span><span class="sc">{</span>ablation[best_name][<span class="st">'mase'</span>]<span class="sc">:.3f}</span><span class="ss">, skill </span><span class="sc">{</span>ablation[best_name][<span class="st">'skill'</span>]<span class="sc">:+.1%}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>recorded: + rolling, MASE 0.665, skill +17.0%</code></pre>
+</div>
+</div>
+</section>
+<section id="features-of-a-whole-series-catch22" class="level2">
+<h2 class="anchored" data-anchor-id="features-of-a-whole-series-catch22">3. Features of a whole series: catch22</h2>
+<p>The features above describe one hour. Some tasks need features of a whole series or a whole window: classifying a day, clustering households, spotting an unusual week. <strong>catch22</strong> (Lubba et al., 2019) is a set of 22 such features, chosen from thousands of candidate features in the hctsa library because together they classify time series nearly as well as the full set. They measure distribution shape, autocorrelation, entropy and how the series moves between levels. <strong>tsfresh</strong> is the large alternative: hundreds of features with built-in significance tests, slower and more prone to overfitting on small data.</p>
+<p>Here catch22 runs on each day’s 24-hour profile (via sktime). The question: do the 22 numbers alone tell a weekday from a weekend?</p>
+<hr>
+<div id="84f532d1" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> y.index[y.index.hour <span class="op">==</span> <span class="dv">0</span>][<span class="dv">0</span>]</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>days <span class="op">=</span> y[start:]</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>n <span class="op">=</span> <span class="bu">len</span>(days) <span class="op">//</span> <span class="dv">24</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>profiles <span class="op">=</span> days.to_numpy()[:n <span class="op">*</span> <span class="dv">24</span>].reshape(n, <span class="dv">1</span>, <span class="dv">24</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>day_index <span class="op">=</span> days.index[::<span class="dv">24</span>][:n]</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>weekend <span class="op">=</span> (day_index.dayofweek <span class="op">&gt;=</span> <span class="dv">5</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>F <span class="op">=</span> Catch22(col_names<span class="op">=</span><span class="st">"short_str_feat"</span>).fit_transform(profiles)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>F<span class="sc">.</span>shape[<span class="dv">0</span>]<span class="sc">}</span><span class="ss"> days x </span><span class="sc">{</span>F<span class="sc">.</span>shape[<span class="dv">1</span>]<span class="sc">}</span><span class="ss"> catch22 features"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>1440 days x 22 catch22 features</code></pre>
+</div>
+</div>
+<div id="f6f40d3b" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>clf <span class="op">=</span> make_pipeline(StandardScaler(), LogisticRegression(max_iter<span class="op">=</span><span class="dv">2000</span>))</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>acc <span class="op">=</span> cross_val_score(clf, F.fillna(<span class="dv">0</span>), weekend, cv<span class="op">=</span><span class="dv">5</span>).mean()</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>base <span class="op">=</span> <span class="dv">1</span> <span class="op">-</span> weekend.mean()</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"weekday/weekend accuracy from catch22 alone: </span><span class="sc">{</span>acc<span class="sc">:.1%}</span><span class="ss"> (always guessing weekday: </span><span class="sc">{</span>base<span class="sc">:.1%}</span><span class="ss">)"</span>)</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> (F[weekend <span class="op">==</span> <span class="dv">1</span>].mean() <span class="op">-</span> F[weekend <span class="op">==</span> <span class="dv">0</span>].mean()) <span class="op">/</span> F.std()</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>d.<span class="bu">abs</span>().sort_values(ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">5</span>).rename(<span class="st">"standardised difference"</span>).<span class="bu">round</span>(<span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>weekday/weekend accuracy from catch22 alone: 75.0% (always guessing weekday: 71.5%)</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>transition_matrix    0.70
+centroid_freq        0.66
+ami_timescale        0.56
+acf_timescale        0.54
+whiten_timescale     0.46
+Name: standardised difference, dtype: float64</code></pre>
+</div>
+</div>
+<p>The 22 shape features beat the base rate, but not by much. The features that differ most between weekend and weekday measure timescales and frequency content (how fast the profile changes), not level. Most catch22 features ignore <em>when</em> in the day something happens, on purpose. That is the trade-off of shape features: they are robust to shifts in time, which is good for clustering households and bad for telling Saturday from Tuesday. For this site’s forecasting task, the hour-level features in sections 1 and 2 do the work.</p>
+<hr>
+
+
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const toggle = window.document.createElement('button');
+      toggle.type = "button";
+      toggle.setAttribute("role", "switch");
+      toggle.setAttribute("aria-checked", "false");
+      toggle.classList.add('top-right');
+      toggle.classList.add('quarto-color-scheme-toggle');
+      toggle.setAttribute("aria-label", "Toggle dark mode");
+      toggle.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      toggle.appendChild(i);
+      // Put the toggle in a landmark of its own, so that landmark navigation
+      // can reach it.
+      //
+      // The container is always a fresh direct child of body, and the toggle is
+      // never moved into page furniture that the theme or the author controls.
+      // The toggle is positioned against the page, so any ancestor that
+      // establishes a containing block captures it: a positioned element or a
+      // grid for position: absolute, and transform, filter, will-change or
+      // contain for position: fixed. A direct child of body has none of these
+      // to inherit, and the shift when one appears is silent and visual.
+      //
+      // ARIA says a document should have at most one banner, and axe reports a
+      // duplicate whether or not the banners carry distinct labels. So use a
+      // header when the page has no banner yet, and a named region otherwise.
+      //
+      // A header is a banner wherever it sits, unless it is inside sectioning
+      // content, so this cannot just look at the children of body: a custom
+      // page layout wraps the title block header in a plain div. An explicit
+      // role="banner" always counts.
+      const sectioning = 'article, aside, main, nav, section, [role="article"], [role="complementary"], [role="main"], [role="navigation"], [role="region"]';
+      const hasBanner = Array.from(
+        window.document.querySelectorAll('header:not([role]), [role="banner"]')
+      ).some(function(el) {
+        return el.hasAttribute("role") || el.closest(sectioning) === null;
+      });
+      const container = window.document.createElement(hasBanner ? "div" : "header");
+      if (hasBanner) {
+        container.setAttribute("role", "region");
+        container.setAttribute("aria-label", "Toggle dark mode");
+      }
+      container.classList.add('quarto-color-scheme-toggle-container');
+      container.appendChild(toggle);
+      window.document.body.appendChild(container);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/bthek1\.github\.io\/ML_Timeseries");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+          if (!link.classList.contains('no-external-icon')) {
+          }
+        }
+      }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
+          if (lineIds.length > 0) {
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            placeBand(gutterDiv, el, lastEl);
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+<script src="https://utteranc.es/client.js" repo="quarto-dev/quarto-web" issue-term="pathname" theme="github-light" crossorigin="anonymous" async="">
+</script>
+<nav class="page-navigation" aria-label="Page">
+  <div class="nav-page nav-page-previous">
+      <a href="../01_Foundations/data_preparation.html" class="pagination-link" aria-label="Data Preparation">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Data Preparation</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../01_Foundations/fft_analysis.html" class="pagination-link" aria-label="FFT analysis">
+        <span class="nav-page-text">FFT analysis</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link active" href="../index.html" aria-current="page">
+<p>Trademark</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/bthek1/ML_Timeseries/issues">
+<p>FAQ</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://bthek1.github.io/bthek1_blog/index.html">
+<p>License</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="../index.html">
+<p>Trademark</p>
+</a>
+  </li>  
+</ul>
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.dev/bthek1/ML_Timeseries/blob/main/01_Foundations/03_Feature_Engineering.ipynb" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/bthek1/ML_Timeseries/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/bthek1/ML_Timeseries">
+      <i class="bi bi-github" role="img" aria-label="Github">
+</i> 
+    </a>
+  </li>  
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/benedict-thekkel/">
+      <i class="bi bi-linkedin" role="img" aria-label="Linkedin">
+</i> 
+    </a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.11.9">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Benedict Thekkel">
+<meta name="description" content="One framework under ETS and ARIMA: a hidden state that evolves, noisy observations of it, and the Kalman filter that tracks it. Plus the proof, in numbers, that exponential smoothing is a Kalman filter.">
+
+<title>State Space Models and the Kalman Filter – ML_Timeseries</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../03_Classical/var_granger.html" rel="next">
+<link href="../03_Classical/theta_intermittent.html" rel="prev">
+<link href="../favi.svg" rel="icon" type="image/svg+xml">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-447e42e69aaa9833c0ba1b986f430b20.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-8e10d5f78f84c68f34904ffd70ceca7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-e0bec6286bfda571ec17f309cbd30a0a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-8e10d5f78f84c68f34904ffd70ceca7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<meta property="og:title" content="State Space Models and the Kalman Filter – ML_Timeseries">
+<meta property="og:description" content="One framework under ETS and ARIMA: a hidden state that evolves, noisy observations of it, and the Kalman filter that tracks it. Plus the proof, in numbers, that exponential smoothing is a Kalman filter.">
+<meta property="og:image" content="https://bthek1.github.io/ML_Timeseries/Logo.svg">
+<meta property="og:site_name" content="ML_Timeseries">
+<meta name="twitter:title" content="State Space Models and the Kalman Filter – ML_Timeseries">
+<meta name="twitter:description" content="One framework under ETS and ARIMA: a hidden state that evolves, noisy observations of it, and the Kalman filter that tracks it. Plus the proof, in numbers, that exponential smoothing is a Kalman filter.">
+<meta name="twitter:image" content="https://bthek1.github.io/ML_Timeseries/Logo.svg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          toggle.setAttribute("aria-checked", alternate ? "true" : "false");
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+    }
+    // Hack to workaround the fact that safari doesn't
+    // properly recolor the scrollbar when toggling (#1455).
+    // Not run on load: stylesheets are set before first paint there, and
+    // scrolling would undo the scroll to a URL fragment (#14973).
+    // The one pixel nudge keeps the reader where they were.
+    const refreshSafariScrollbar = () => {
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        const scrollY = window.scrollY;
+        window.scrollTo(0, scrollY > 0 ? scrollY - 1 : 1);
+        setTimeout(() => {
+          window.scrollTo(0, scrollY);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const queryPrefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const darkModeDefault = queryPrefersDark.matches;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      refreshSafariScrollbar();
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    queryPrefersDark.addEventListener("change", e => {
+      if(window.localStorage.getItem("quarto-color-scheme") !== null)
+        return;
+      const alternate = e.matches
+      toggleColorMode(alternate);
+      refreshSafariScrollbar();
+      localAlternateSentinel = e.matches ? 'alternate' : 'default'; // this is used alongside local storage!
+      toggleGiscusIfUsed(alternate, darkModeDefault);
+    });
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark" aria-label="Site">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../Logo.svg" alt="Benedict Thekkel" class="navbar-logo light-content">
+    <img src="../Logo.svg" alt="Benedict Thekkel" class="navbar-logo dark-content">
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-docs" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Docs</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-docs">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/bthek1_blog/">
+ <span class="dropdown-text">Blog</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Ideas/">
+ <span class="dropdown-text">Ideas</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Other/">
+ <span class="dropdown-text">Other</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-business" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Business</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-business">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Business_docs/">
+ <span class="dropdown-text">Business Docs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Finances/">
+ <span class="dropdown-text">Finances</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-web" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Web</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-web">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Web_development/">
+ <span class="dropdown-text">Web Development</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Front_End/">
+ <span class="dropdown-text">Front End</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Back_End/">
+ <span class="dropdown-text">Back End</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/IaaS_docs/">
+ <span class="dropdown-text">IaaS Docs</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-machine-learning" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Machine Learning</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-machine-learning">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ML_methods/">
+ <span class="dropdown-text">ML Methods</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ML_Timeseries/">
+ <span class="dropdown-text">ML Timeseries</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-deep-learning" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Deep Learning</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-deep-learning">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/FastAI_course/">
+ <span class="dropdown-text">FastAI course</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/DL_methods/">
+ <span class="dropdown-text">DL Methods</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/DL_tasks/">
+ <span class="dropdown-text">DL Tasks</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-tools" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Tools</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-tools">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Software_Tools/">
+ <span class="dropdown-text">Software Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Hardware_Tools/">
+ <span class="dropdown-text">Hardware Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Electrical_Docs/">
+ <span class="dropdown-text">Electrical Docs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Python_Libs/">
+ <span class="dropdown-text">Python Libs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/nbdevAuto/">
+ <span class="dropdown-text">Nbdev Automation</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ROS2_docs/">
+ <span class="dropdown-text">ROS2 Docs</span></a>
+  </li>  
+    </ul>
+  </li>
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools tools-wide">
+    <div class="dropdown">
+      <a href="" title="" id="quarto-navigation-tool-dropdown-0" class="quarto-navigation-tool dropdown-toggle px-1" data-bs-toggle="dropdown" aria-expanded="false" role="link" aria-label="Github"><i class="bi bi-github"></i></a>
+      <ul class="dropdown-menu" aria-labelledby="quarto-navigation-tool-dropdown-0">
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries">
+              <i class="bi bi-code-slash pe-1"></i>
+            Source Code
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues/new">
+              <i class="bi bi-bug pe-1"></i>
+            Report a Bug
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues/new">
+              <i class="bi bi-chat-right-text pe-1"></i>
+            Ask a Question
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues">
+              <i class="bi bi-list-ul pe-1"></i>
+            All Issues
+            </a>
+          </li>
+      </ul>
+    </div>
+    <a href="https://www.linkedin.com/in/benedict-thekkel/" title="" class="quarto-navigation-tool px-1" aria-label="Linkedin"><i class="bi bi-linkedin"></i></a>
+  <button type="button" role="switch" aria-checked="false" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode" aria-label="Toggle dark mode"><i class="bi"></i></button>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+            <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" aria-label="Toolbar">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03_Classical/baselines.html">03 Classical</a></li><li class="breadcrumb-item"><a href="../03_Classical/state_space_kalman.html">State Space Models and the Kalman Filter</a></li></ol></nav>
+        <a class="flex-grow-1" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto" aria-label="Section">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimeSeries ML</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Phisaver Project</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-controls="quarto-sidebar-section-1" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-1-label">01 Foundations</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-1" aria-labelledby="quarto-sidebar-section-1-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/datasets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datasets</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/decomposition_stationarity.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Decomposition and Stationarity</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/data_preparation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data Preparation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/feature_engineering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Feature Engineering</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/fft_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">FFT analysis</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-controls="quarto-sidebar-section-2" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-2-label">02 Evaluation</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-2" aria-labelledby="quarto-sidebar-section-2-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/backtesting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Backtesting and Leakage</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/forecast_metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forecast Metrics</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Benchmarks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/scoreboard.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scoreboard</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-controls="quarto-sidebar-section-3" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-3-label">03 Classical</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-3" aria-labelledby="quarto-sidebar-section-3-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/baselines.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Baselines</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/ets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Exponential Smoothing (ETS)</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/arima.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ARIMA</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/theta_intermittent.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Theta and Intermittent Demand</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/state_space_kalman.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">State Space Models and the Kalman Filter</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/var_granger.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VAR and Granger Causality</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/garch.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">GARCH: Forecasting the Variance</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/prophet.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hourly Time Series Forecasting using Facebook’s Prophet</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-controls="quarto-sidebar-section-4" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-4-label">04 Machine Learning</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-4" aria-labelledby="quarto-sidebar-section-4-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/forecasting_as_regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forecasting as Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/multistep_strategies.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multi-step Strategies</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/global_vs_local.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Global vs Local Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/xgboost.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XGBoost</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/xgboost_energy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XGBoost: Forecast Energy Consumption</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-controls="quarto-sidebar-section-5" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-5-label">05 Deep Learning</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-5" aria-labelledby="quarto-sidebar-section-5-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/dl_data_pipeline.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Deep Learning Data Pipeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/rnn_lstm_deepar.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">RNN, LSTM and DeepAR</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/mlp_family.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The MLP Family: N-BEATS, N-HiTS, TiDE and DLinear</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/transformers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transformers for Time Series: PatchTST, iTransformer and TFT</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/nbeats_from_scratch.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">N-BEATS from Scratch</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-controls="quarto-sidebar-section-6" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-6-label">06 Foundation Models</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-6" aria-labelledby="quarto-sidebar-section-6-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/chronos2_zero_shot.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Chronos-2 Zero-Shot</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/foundation_model_comparison.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Foundation Model Comparison</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/fine_tuning.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Fine-Tuning Chronos-2</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/small_models_on_cpu.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Small Models on CPU</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-controls="quarto-sidebar-section-7" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-7-label">07 Probabilistic</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-7" aria-labelledby="quarto-sidebar-section-7-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../07_Probabilistic/probabilistic_forecasting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Probabilistic Forecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../07_Probabilistic/conformal_prediction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Conformal Prediction</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-controls="quarto-sidebar-section-8" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-8-label">08 Other Tasks</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-8" aria-labelledby="quarto-sidebar-section-8-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/anomaly_detection.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Anomaly Detection</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/change_point_detection.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Change-Point Detection</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/matrix_profile.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Matrix Profile: Motifs and Discords</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/classification_minirocket.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Time Series Classification with MiniRocket</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-controls="quarto-sidebar-section-9" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-9-label">09 Many Series</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-9" aria-labelledby="quarto-sidebar-section-9-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../09_Many_Series/hierarchical_reconciliation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hierarchical Reconciliation</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-10" aria-controls="quarto-sidebar-section-10" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-10-label">10 Production</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-10" aria-labelledby="quarto-sidebar-section-10-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/explainability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Explainability</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/drift_and_retraining.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Drift and Retraining</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/onnx_export.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ONNX Export</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-11" aria-controls="quarto-sidebar-section-11" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-11-label">Libraries</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-11" aria-labelledby="quarto-sidebar-section-11-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/darts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Darts</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/darts_hyperparameter_optimization.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Darts - Hyper-parameters Optimization for Electricity Load Forecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-12" aria-controls="quarto-sidebar-section-12" aria-expanded="false">
+ <span class="menu-text" id="quarto-sidebar-section-12-label">Nixtla</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-12" aria-labelledby="quarto-sidebar-section-12-label" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_statsforecasting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - StatsForecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_mlforecast.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - ML Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neuralforecast.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Neural Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_exogenous_variables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Exogenous Variables</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neural_save_and_load.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Neural Save and Load Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neural_advanced.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - Neural Advanced Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_all_methods.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Statistical, Machine Learning and Neural Forecasting methods</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" aria-labelledby="toc-title" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-model" id="toc-the-model" class="nav-link active" data-scroll-target="#the-model">The model</a></li>
+  <li><a href="#a-kalman-filter-in-twelve-lines" id="toc-a-kalman-filter-in-twelve-lines" class="nav-link" data-scroll-target="#a-kalman-filter-in-twelve-lines">1. A Kalman filter in twelve lines</a></li>
+  <li><a href="#exponential-smoothing-is-a-kalman-filter" id="toc-exponential-smoothing-is-a-kalman-filter" class="nav-link" data-scroll-target="#exponential-smoothing-is-a-kalman-filter">2. Exponential smoothing is a Kalman filter</a></li>
+  <li><a href="#missing-data-for-free" id="toc-missing-data-for-free" class="nav-link" data-scroll-target="#missing-data-for-free">3. Missing data for free</a></li>
+  <li><a href="#a-structural-model-on-the-backtest" id="toc-a-structural-model-on-the-backtest" class="nav-link" data-scroll-target="#a-structural-model-on-the-backtest">4. A structural model on the backtest</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.dev/bthek1/ML_Timeseries/blob/main/03_Classical/05_State_Space_Kalman.ipynb" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/bthek1/ML_Timeseries/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content" tabindex="-1">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03_Classical/baselines.html">03 Classical</a></li><li class="breadcrumb-item"><a href="../03_Classical/state_space_kalman.html">State Space Models and the Kalman Filter</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">State Space Models and the Kalman Filter</h1>
+</div>
+
+<div>
+  <div class="description">
+    One framework under ETS and ARIMA: a hidden state that evolves, noisy observations of it, and the Kalman filter that tracks it. Plus the proof, in numbers, that exponential smoothing is a Kalman filter.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Benedict Thekkel </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<section id="the-model" class="level2">
+<h2 class="anchored" data-anchor-id="the-model">The model</h2>
+<p>A <strong>state space model</strong> separates what you want to know from what you can measure:</p>
+<p>The <strong>state equation</strong> says how the hidden state evolves:</p>
+<p><span class="math display">\[x_t = F\,x_{t-1} + w_t, \quad w_t \sim N(0, Q)\]</span></p>
+<p>The <strong>observation equation</strong> says what the meter reads:</p>
+<p><span class="math display">\[y_t = H\,x_t + v_t, \quad v_t \sim N(0, R)\]</span></p>
+<p>For this house, the hidden state could be the household’s underlying consumption level and its daily and weekly profile; the observation is that plus the appliance noise of each hour. ETS and ARIMA are both special cases with particular choices of <span class="math inline">\(F\)</span>, <span class="math inline">\(H\)</span>, <span class="math inline">\(Q\)</span> and <span class="math inline">\(R\)</span>, which is how statsmodels fits them.</p>
+<p>The <strong>Kalman filter</strong> (Kalman, 1960) tracks the state through two steps per observation:</p>
+<ol type="1">
+<li><strong>Predict</strong>: push the state estimate and its uncertainty through <span class="math inline">\(F\)</span>. Uncertainty grows by <span class="math inline">\(Q\)</span>.</li>
+<li><strong>Update</strong>: compare the prediction with the new observation and move the estimate by the <strong>Kalman gain</strong> <span class="math inline">\(K\)</span> times the error. <span class="math inline">\(K\)</span> is large when the state is uncertain and the meter is precise, small when the meter is noisy.</li>
+</ol>
+<p>This is the same filter that fuses wheel odometry and IMU readings in a robot (the EKF in ROS 2’s <code>robot_localization</code> is its nonlinear extension). Here the “sensor” is the meter and the “pose” is the household’s consumption level.</p>
+<hr>
+<div id="a8136a63" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> warnings</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> statsmodels.tsa.statespace.structural <span class="im">import</span> UnobservedComponents</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> threadpoolctl <span class="im">import</span> threadpool_limits</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ML_Timeseries.backtest <span class="im">import</span> backtest, record, score</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ML_Timeseries.data <span class="im">import</span> line_chart, load_household, show</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co"># nbdev-test runs pages in parallel; per-page BLAS pools would oversubscribe the 4 cores.</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> threadpool_limits(<span class="dv">1</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>warnings.filterwarnings(<span class="st">"ignore"</span>, module<span class="op">=</span><span class="st">"statsmodels"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="a032e397" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>hh <span class="op">=</span> load_household()</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>y, FILLED <span class="op">=</span> hh[<span class="st">"kwh"</span>], hh[<span class="st">"filled"</span>]</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>daily <span class="op">=</span> load_household(<span class="st">"D"</span>)[<span class="st">"kwh"</span>]</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>NB <span class="op">=</span> <span class="st">"03_Classical/05_State_Space_Kalman"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="a-kalman-filter-in-twelve-lines" class="level2">
+<h2 class="anchored" data-anchor-id="a-kalman-filter-in-twelve-lines">1. A Kalman filter in twelve lines</h2>
+<p>The simplest state space model is the <strong>local level</strong>: the state is one number, a level that wanders as a random walk, observed with noise.</p>
+<p><span class="math display">\[\ell_t = \ell_{t-1} + w_t \qquad y_t = \ell_t + v_t\]</span></p>
+<p>So <span class="math inline">\(F = H = 1\)</span>, and the filter is scalar arithmetic. Run on the daily totals with a level noise <span class="math inline">\(Q\)</span> and a measurement noise <span class="math inline">\(R\)</span>:</p>
+<hr>
+<div id="6026a335" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> kalman_local_level(obs, Q, R, level0<span class="op">=</span><span class="va">None</span>, P0<span class="op">=</span><span class="fl">1e6</span>):</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"Scalar Kalman filter for a local level model; returns filtered levels and gains."</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    level <span class="op">=</span> obs[<span class="dv">0</span>] <span class="cf">if</span> level0 <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> level0</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    P <span class="op">=</span> P0</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    levels, gains <span class="op">=</span> [], []</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> z <span class="kw">in</span> obs:</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        P <span class="op">=</span> P <span class="op">+</span> Q                   <span class="co"># predict: the level may have moved, so uncertainty grows</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        K <span class="op">=</span> P <span class="op">/</span> (P <span class="op">+</span> R)             <span class="co"># gain: trust the observation in proportion to our uncertainty</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        level <span class="op">=</span> level <span class="op">+</span> K <span class="op">*</span> (z <span class="op">-</span> level)  <span class="co"># update: move towards the observation</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        P <span class="op">=</span> (<span class="dv">1</span> <span class="op">-</span> K) <span class="op">*</span> P             <span class="co"># the observation reduced the uncertainty</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        levels.append(level)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        gains.append(K)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array(levels), np.array(gains)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> daily.to_numpy()</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>R <span class="op">=</span> np.var(np.diff(x)) <span class="op">/</span> <span class="dv">2</span>      <span class="co"># a rough split of the day-to-day variance into noise...</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>Q <span class="op">=</span> R <span class="op">/</span> <span class="dv">50</span>                      <span class="co"># ...and a level that moves slowly relative to it</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>levels, gains <span class="op">=</span> kalman_local_level(x, Q, R)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>show(line_chart(daily.index.date, {<span class="st">"daily kWh"</span>: x, <span class="st">"Kalman level"</span>: levels}, y_name<span class="op">=</span><span class="st">"kWh"</span>, height<span class="op">=</span><span class="st">"340px"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+
+<script>
+    require.config({paths: {'echarts':'https://cdn.jsdelivr.net/gh/pyecharts/pyecharts-assets@f2328d558550046fc5449672a6850e848e141590/assets/v6/echarts.min'}});
+</script>
+
+        <div id="623a1aee00ed413b94cf2417114a4654" style="width:100%; height:340px;"></div>
+
+<script>
+        require(['echarts'], function(echarts) {var chart_623a1aee00ed413b94cf2417114a4654 = echarts.init(
+                    document.getElementById('623a1aee00ed413b94cf2417114a4654'), 'white', {renderer: 'canvas', locale: 'ZH'});
+                var option_623a1aee00ed413b94cf2417114a4654 = {"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0,"aria": {"enabled": false},"series": [{"type": "line","name": "daily kWh","connectNulls": false,"xAxisIndex": 0,"symbolSize": 4,"showSymbol": false,"smooth": false,"clip": true,"step": false,"stackStrategy": "samesign","data": [["2006-12-16",79.556],["2006-12-17",56.508],["2006-12-18",36.73],["2006-12-19",27.77],["2006-12-20",37.096],["2006-12-21",28.65],["2006-12-22",39.022],["2006-12-23",79.556],["2006-12-24",42.5],["2006-12-25",45.719],["2006-12-26",65.568],["2006-12-27",25.479],["2006-12-28",34.544],["2006-12-29",52.907],["2006-12-30",46.553],["2006-12-31",58.237],["2007-01-01",45.817],["2007-01-02",21.154],["2007-01-03",16.901],["2007-01-04",54.324],["2007-01-05",45.223],["2007-01-06",25.14],["2007-01-07",40.794],["2007-01-08",37.356],["2007-01-09",31.151],["2007-01-10",35.913],["2007-01-11",37.587],["2007-01-12",24.355],["2007-01-13",53.114],["2007-01-14",50.165],["2007-01-15",35.811],["2007-01-16",28.107],["2007-01-17",47.461],["2007-01-18",30.358],["2007-01-19",24.674],["2007-01-20",52.229],["2007-01-21",56.788],["2007-01-22",36.342],["2007-01-23",29.627],["2007-01-24",49.798],["2007-01-25",26.606],["2007-01-26",26.966],["2007-01-27",34.068],["2007-01-28",51.539],["2007-01-29",33.044],["2007-01-30",28.463],["2007-01-31",39.396],["2007-02-01",30.413],["2007-02-02",27.796],["2007-02-03",67.162],["2007-02-04",59.932],["2007-02-05",27.421],["2007-02-06",21.225],["2007-02-07",38.8],["2007-02-08",30.024],["2007-02-09",27.003],["2007-02-10",47.155],["2007-02-11",59.52],["2007-02-12",31.293],["2007-02-13",23.576],["2007-02-14",41.645],["2007-02-15",33.089],["2007-02-16",28.375],["2007-02-17",34.615],["2007-02-18",63.829],["2007-02-19",36.444],["2007-02-20",52.499],["2007-02-21",34.548],["2007-02-22",56.236],["2007-02-23",21.891],["2007-02-24",11.915],["2007-02-25",8.362],["2007-02-26",9.475],["2007-02-27",8.635],["2007-02-28",8.68],["2007-03-01",8.626],["2007-03-02",8.595],["2007-03-03",13.652],["2007-03-04",34.845],["2007-03-05",44.339],["2007-03-06",20.775],["2007-03-07",39.587],["2007-03-08",26.202],["2007-03-09",21.21],["2007-03-10",41.412],["2007-03-11",58.011],["2007-03-12",32.511],["2007-03-13",21.502],["2007-03-14",29.889],["2007-03-15",31.414],["2007-03-16",28.368],["2007-03-17",33.801],["2007-03-18",39.517],["2007-03-19",35.875],["2007-03-20",34.77],["2007-03-21",35.702],["2007-03-22",24.25],["2007-03-23",21.817],["2007-03-24",49.474],["2007-03-25",55.641],["2007-03-26",23.601],["2007-03-27",18.419],["2007-03-28",38.898],["2007-03-29",26.507],["2007-03-30",23.373],["2007-03-31",58.492],["2007-04-01",46.433],["2007-04-02",32.68],["2007-04-03",27.38],["2007-04-04",34.198],["2007-04-05",30.735],["2007-04-06",26.686],["2007-04-07",25.899],["2007-04-08",26.814],["2007-04-09",16.682],["2007-04-10",12.956],["2007-04-11",14.791],["2007-04-12",8.962],["2007-04-13",9.184],["2007-04-14",9.238],["2007-04-15",12.103],["2007-04-16",15.873],["2007-04-17",20.396],["2007-04-18",16.637],["2007-04-19",17.144],["2007-04-20",13.71],["2007-04-21",27.894],["2007-04-22",37.229],["2007-04-23",17.576],["2007-04-24",17.202],["2007-04-25",21.069],["2007-04-26",21.258],["2007-04-27",18.239],["2007-04-28",20.612],["2007-04-29",22.985],["2007-04-30",25.358],["2007-05-01",27.731],["2007-05-02",16.725],["2007-05-03",18.171],["2007-05-04",16.635],["2007-05-05",26.051],["2007-05-06",35.035],["2007-05-07",27.394],["2007-05-08",29.822],["2007-05-09",27.762],["2007-05-10",11.798],["2007-05-11",16.319],["2007-05-12",24.026],["2007-05-13",27.246],["2007-05-14",24.463],["2007-05-15",15.073],["2007-05-16",28.216],["2007-05-17",20.53],["2007-05-18",27.192],["2007-05-19",23.824],["2007-05-20",32.805],["2007-05-21",18.668],["2007-05-22",18.881],["2007-05-23",24.416],["2007-05-24",19.24],["2007-05-25",26.904],["2007-05-26",25.204],["2007-05-27",35.897],["2007-05-28",27.291],["2007-05-29",17.689],["2007-05-30",26.831],["2007-05-31",15.642],["2007-06-01",17.427],["2007-06-02",24.739],["2007-06-03",35.134],["2007-06-04",15.194],["2007-06-05",24.315],["2007-06-06",28.247],["2007-06-07",16.417],["2007-06-08",35.801],["2007-06-09",18.142],["2007-06-10",22.347],["2007-06-11",13.244],["2007-06-12",15.313],["2007-06-13",15.455],["2007-06-14",20.985],["2007-06-15",16.493],["2007-06-16",33.629],["2007-06-17",32.451],["2007-06-18",11.308],["2007-06-19",14.059],["2007-06-20",17.905],["2007-06-21",13.449],["2007-06-22",9.438],["2007-06-23",7.959],["2007-06-24",11.911],["2007-06-25",17.87],["2007-06-26",15.748],["2007-06-27",24.68],["2007-06-28",21.591],["2007-06-29",21.752],["2007-06-30",22.255],["2007-07-01",17.111],["2007-07-02",16.117],["2007-07-03",17.665],["2007-07-04",16.723],["2007-07-05",17.622],["2007-07-06",17.825],["2007-07-07",22.637],["2007-07-08",18.151],["2007-07-09",19.669],["2007-07-10",15.139],["2007-07-11",12.039],["2007-07-12",17.826],["2007-07-13",13.24],["2007-07-14",21.47],["2007-07-15",16.8],["2007-07-16",14.228],["2007-07-17",11.994],["2007-07-18",12.618],["2007-07-19",11.298],["2007-07-20",18.507],["2007-07-21",17.671],["2007-07-22",22.946],["2007-07-23",16.517],["2007-07-24",13.755],["2007-07-25",7.876],["2007-07-26",15.408],["2007-07-27",20.042],["2007-07-28",27.031],["2007-07-29",5.352],["2007-07-30",7.78],["2007-07-31",13.539],["2007-08-01",17.934],["2007-08-02",16.99],["2007-08-03",17.723],["2007-08-04",19.083],["2007-08-05",13.118],["2007-08-06",18.162],["2007-08-07",24.726],["2007-08-08",18.758],["2007-08-09",17.861],["2007-08-10",17.134],["2007-08-11",18.194],["2007-08-12",20.698],["2007-08-13",19.217],["2007-08-14",15.686],["2007-08-15",19.864],["2007-08-16",15.975],["2007-08-17",16.832],["2007-08-18",5.799],["2007-08-19",23.705],["2007-08-20",22.314],["2007-08-21",10.709],["2007-08-22",20.163],["2007-08-23",18.539],["2007-08-24",27.623],["2007-08-25",19.181],["2007-08-26",21.915],["2007-08-27",20.195],["2007-08-28",16.617],["2007-08-29",12.467],["2007-08-30",20.041],["2007-08-31",21.33],["2007-09-01",28.358],["2007-09-02",27.708],["2007-09-03",17.315],["2007-09-04",26.416],["2007-09-05",20.61],["2007-09-06",15.025],["2007-09-07",22.275],["2007-09-08",24.496],["2007-09-09",27.992],["2007-09-10",18.623],["2007-09-11",16.393],["2007-09-12",21.463],["2007-09-13",19.106],["2007-09-14",18.924],["2007-09-15",18.255],["2007-09-16",27.537],["2007-09-17",24.353],["2007-09-18",19.459],["2007-09-19",21.645],["2007-09-20",20.926],["2007-09-21",20.646],["2007-09-22",19.603],["2007-09-23",23.633],["2007-09-24",22.576],["2007-09-25",29.406],["2007-09-26",30.413],["2007-09-27",23.21],["2007-09-28",28.008],["2007-09-29",38.275],["2007-09-30",25.272],["2007-10-01",28.682],["2007-10-02",36.648],["2007-10-03",21.341],["2007-10-04",25.308],["2007-10-05",23.235],["2007-10-06",29.271],["2007-10-07",35.102],["2007-10-08",18.254],["2007-10-09",28.131],["2007-10-10",19.45],["2007-10-11",28.874],["2007-10-12",31.908],["2007-10-13",32.112],["2007-10-14",34.354],["2007-10-15",21.105],["2007-10-16",32.741],["2007-10-17",26.282],["2007-10-18",25.309],["2007-10-19",34.761],["2007-10-20",27.671],["2007-10-21",32.366],["2007-10-22",27.548],["2007-10-23",32.623],["2007-10-24",31.094],["2007-10-25",30.899],["2007-10-26",23.959],["2007-10-27",29.761],["2007-10-28",8.536],["2007-10-29",9.09],["2007-10-30",13.517],["2007-10-31",21.387],["2007-11-01",8.27],["2007-11-02",24.06],["2007-11-03",8.209],["2007-11-04",24.761],["2007-11-05",25.01],["2007-11-06",34.706],["2007-11-07",30.746],["2007-11-08",25.018],["2007-11-09",36.187],["2007-11-10",43.527],["2007-11-11",31.452],["2007-11-12",35.936],["2007-11-13",36.907],["2007-11-14",34.133],["2007-11-15",24.866],["2007-11-16",38.496],["2007-11-17",43.502],["2007-11-18",36.398],["2007-11-19",28.728],["2007-11-20",34.931],["2007-11-21",29.218],["2007-11-22",32.206],["2007-11-23",42.044],["2007-11-24",31.651],["2007-11-25",23.26],["2007-11-26",26.162],["2007-11-27",46.684],["2007-11-28",27.416],["2007-11-29",28.674],["2007-11-30",38.862],["2007-12-01",52.249],["2007-12-02",49.103],["2007-12-03",29.368],["2007-12-04",34.461],["2007-12-05",35.885],["2007-12-06",41.466],["2007-12-07",29.484],["2007-12-08",36.89],["2007-12-09",37.91],["2007-12-10",29.313],["2007-12-11",38.418],["2007-12-12",26.468],["2007-12-13",30.796],["2007-12-14",32.913],["2007-12-15",45.615],["2007-12-16",46.037],["2007-12-17",29.972],["2007-12-18",43.72],["2007-12-19",36.601],["2007-12-20",32.496],["2007-12-21",33.043],["2007-12-22",43.521],["2007-12-23",40.151],["2007-12-24",37.631],["2007-12-25",44.916],["2007-12-26",43.005],["2007-12-27",42.203],["2007-12-28",51.884],["2007-12-29",54.983],["2007-12-30",42.649],["2007-12-31",36.942],["2008-01-01",45.996],["2008-01-02",27.402],["2008-01-03",25.168],["2008-01-04",38.198],["2008-01-05",36.387],["2008-01-06",30.42],["2008-01-07",28.264],["2008-01-08",34.059],["2008-01-09",29.807],["2008-01-10",31.568],["2008-01-11",28.43],["2008-01-12",47.857],["2008-01-13",48.061],["2008-01-14",33.749],["2008-01-15",44.782],["2008-01-16",35.598],["2008-01-17",26.205],["2008-01-18",36.45],["2008-01-19",33.005],["2008-01-20",29.006],["2008-01-21",30.983],["2008-01-22",38.75],["2008-01-23",31.372],["2008-01-24",27.417],["2008-01-25",37.331],["2008-01-26",47.25],["2008-01-27",39.696],["2008-01-28",38.47],["2008-01-29",44.6],["2008-01-30",27.344],["2008-01-31",32.565],["2008-02-01",25.578],["2008-02-02",48.968],["2008-02-03",34.743],["2008-02-04",27.136],["2008-02-05",41.208],["2008-02-06",27.826],["2008-02-07",25.305],["2008-02-08",32.509],["2008-02-09",35.038],["2008-02-10",36.412],["2008-02-11",28.2],["2008-02-12",33.13],["2008-02-13",31.675],["2008-02-14",26.744],["2008-02-15",33.42],["2008-02-16",39.116],["2008-02-17",32.223],["2008-02-18",25.24],["2008-02-19",35.449],["2008-02-20",37.563],["2008-02-21",27.231],["2008-02-22",28.876],["2008-02-23",30.609],["2008-02-24",21.05],["2008-02-25",8.408],["2008-02-26",8.452],["2008-02-27",9.445],["2008-02-28",8.486],["2008-02-29",22.222],["2008-03-01",19.031],["2008-03-02",19.37],["2008-03-03",17.343],["2008-03-04",27.816],["2008-03-05",33.953],["2008-03-06",41.72],["2008-03-07",31.049],["2008-03-08",37.478],["2008-03-09",26.008],["2008-03-10",26.978],["2008-03-11",36.667],["2008-03-12",29.571],["2008-03-13",27.925],["2008-03-14",36.837],["2008-03-15",26.272],["2008-03-16",30.033],["2008-03-17",28.449],["2008-03-18",31.959],["2008-03-19",21.807],["2008-03-20",20.888],["2008-03-21",34.441],["2008-03-22",34.225],["2008-03-23",38.767],["2008-03-24",32.934],["2008-03-25",33.598],["2008-03-26",27.225],["2008-03-27",22.847],["2008-03-28",31.424],["2008-03-29",41.186],["2008-03-30",35.773],["2008-03-31",22.959],["2008-04-01",35.484],["2008-04-02",28.195],["2008-04-03",18.813],["2008-04-04",27.199],["2008-04-05",32.846],["2008-04-06",28.272],["2008-04-07",25.647],["2008-04-08",44.292],["2008-04-09",20.314],["2008-04-10",24.629],["2008-04-11",31.294],["2008-04-12",46.667],["2008-04-13",37.216],["2008-04-14",26.493],["2008-04-15",27.84],["2008-04-16",24.818],["2008-04-17",23.264],["2008-04-18",31.04],["2008-04-19",37.562],["2008-04-20",29.857],["2008-04-21",19.403],["2008-04-22",27.128],["2008-04-23",22.622],["2008-04-24",17.396],["2008-04-25",21.129],["2008-04-26",15.053],["2008-04-27",16.804],["2008-04-28",10.984],["2008-04-29",32.877],["2008-04-30",18.362],["2008-05-01",9.6],["2008-05-02",24.963],["2008-05-03",21.493],["2008-05-04",24.516],["2008-05-05",22.782],["2008-05-06",29.833],["2008-05-07",19.604],["2008-05-08",35.278],["2008-05-09",29.121],["2008-05-10",31.819],["2008-05-11",26.849],["2008-05-12",25.403],["2008-05-13",24.615],["2008-05-14",26.404],["2008-05-15",19.379],["2008-05-16",27.505],["2008-05-17",27.624],["2008-05-18",30.066],["2008-05-19",17.171],["2008-05-20",26.356],["2008-05-21",22.069],["2008-05-22",16.281],["2008-05-23",24.749],["2008-05-24",26.336],["2008-05-25",34.142],["2008-05-26",21.495],["2008-05-27",28.478],["2008-05-28",18.573],["2008-05-29",18.918],["2008-05-30",23.287],["2008-05-31",27.358],["2008-06-01",30.815],["2008-06-02",17.9],["2008-06-03",26.63],["2008-06-04",26.482],["2008-06-05",18.668],["2008-06-06",20.295],["2008-06-07",31.375],["2008-06-08",25.705],["2008-06-09",22.095],["2008-06-10",17.785],["2008-06-11",18.72],["2008-06-12",20.989],["2008-06-13",31.26],["2008-06-14",23.082],["2008-06-15",38.152],["2008-06-16",21.717],["2008-06-17",19.085],["2008-06-18",31.56],["2008-06-19",26.468],["2008-06-20",27.935],["2008-06-21",28.904],["2008-06-22",26.107],["2008-06-23",20.863],["2008-06-24",29.241],["2008-06-25",21.029],["2008-06-26",17.6],["2008-06-27",29.253],["2008-06-28",20.147],["2008-06-29",12.489],["2008-06-30",13.403],["2008-07-01",20.254],["2008-07-02",19.12],["2008-07-03",18.306],["2008-07-04",15.7],["2008-07-05",24.485],["2008-07-06",30.084],["2008-07-07",16.39],["2008-07-08",18.77],["2008-07-09",15.322],["2008-07-10",20.855],["2008-07-11",20.904],["2008-07-12",22.148],["2008-07-13",20.925],["2008-07-14",18.965],["2008-07-15",19.264],["2008-07-16",17.951],["2008-07-17",21.985],["2008-07-18",21.026],["2008-07-19",22.4],["2008-07-20",15.692],["2008-07-21",19.275],["2008-07-22",12.337],["2008-07-23",15.711],["2008-07-24",18.224],["2008-07-25",14.426],["2008-07-26",13.595],["2008-07-27",19.123],["2008-07-28",13.763],["2008-07-29",19.443],["2008-07-30",21.665],["2008-07-31",23.211],["2008-08-01",12.326],["2008-08-02",8.43],["2008-08-03",8.413],["2008-08-04",18.778],["2008-08-05",13.785],["2008-08-06",5.435],["2008-08-07",5.581],["2008-08-08",5.037],["2008-08-09",5.982],["2008-08-10",5.867],["2008-08-11",6.199],["2008-08-12",4.816],["2008-08-13",4.71],["2008-08-14",4.504],["2008-08-15",4.561],["2008-08-16",4.58],["2008-08-17",4.58],["2008-08-18",4.563],["2008-08-19",4.578],["2008-08-20",4.475],["2008-08-21",4.355],["2008-08-22",4.452],["2008-08-23",4.244],["2008-08-24",4.245],["2008-08-25",4.172],["2008-08-26",4.293],["2008-08-27",4.302],["2008-08-28",4.471],["2008-08-29",4.46],["2008-08-30",4.507],["2008-08-31",25.028],["2008-09-01",20.792],["2008-09-02",23.069],["2008-09-03",23.141],["2008-09-04",20.42],["2008-09-05",14.566],["2008-09-06",31.143],["2008-09-07",22.878],["2008-09-08",21.822],["2008-09-09",19.328],["2008-09-10",21.679],["2008-09-11",17.145],["2008-09-12",23.213],["2008-09-13",27.191],["2008-09-14",26.272],["2008-09-15",28.295],["2008-09-16",20.364],["2008-09-17",25.32],["2008-09-18",25.088],["2008-09-19",25.314],["2008-09-20",21.743],["2008-09-21",25.551],["2008-09-22",22.643],["2008-09-23",20.546],["2008-09-24",28.639],["2008-09-25",18.854],["2008-09-26",23.858],["2008-09-27",35.457],["2008-09-28",28.852],["2008-09-29",25.029],["2008-09-30",22.917],["2008-10-01",31.206],["2008-10-02",22.422],["2008-10-03",26.876],["2008-10-04",35.008],["2008-10-05",25.833],["2008-10-06",23.73],["2008-10-07",28.776],["2008-10-08",31.01],["2008-10-09",33.061],["2008-10-10",25.306],["2008-10-11",27.823],["2008-10-12",31.799],["2008-10-13",24.366],["2008-10-14",26.818],["2008-10-15",35.948],["2008-10-16",26.395],["2008-10-17",31.115],["2008-10-18",37.32],["2008-10-19",32.866],["2008-10-20",27.793],["2008-10-21",34.395],["2008-10-22",27.433],["2008-10-23",30.508],["2008-10-24",35.554],["2008-10-25",26.167],["2008-10-26",8.725],["2008-10-27",8.732],["2008-10-28",22.122],["2008-10-29",26.876],["2008-10-30",18.31],["2008-10-31",21.431],["2008-11-01",13.842],["2008-11-02",15.177],["2008-11-03",14.127],["2008-11-04",26.039],["2008-11-05",52.249],["2008-11-06",26.474],["2008-11-07",26.986],["2008-11-08",28.886],["2008-11-09",42.976],["2008-11-10",35.011],["2008-11-11",40.932],["2008-11-12",36.492],["2008-11-13",20.641],["2008-11-14",27.029],["2008-11-15",50.527],["2008-11-16",39.424],["2008-11-17",25.394],["2008-11-18",29.151],["2008-11-19",30.671],["2008-11-20",28.206],["2008-11-21",27.899],["2008-11-22",28.523],["2008-11-23",56.795],["2008-11-24",53.55],["2008-11-25",45.048],["2008-11-26",25.266],["2008-11-27",39.37],["2008-11-28",31.433],["2008-11-29",40.578],["2008-11-30",40.023],["2008-12-01",26.942],["2008-12-02",29.891],["2008-12-03",29.253],["2008-12-04",28.977],["2008-12-05",34.31],["2008-12-06",42.064],["2008-12-07",41.112],["2008-12-08",31.144],["2008-12-09",33.386],["2008-12-10",36.981],["2008-12-11",23.875],["2008-12-12",30.259],["2008-12-13",30.426],["2008-12-14",33.369],["2008-12-15",29.924],["2008-12-16",29.951],["2008-12-17",34.98],["2008-12-18",28.949],["2008-12-19",31.369],["2008-12-20",37.401],["2008-12-21",44.06],["2008-12-22",33.597],["2008-12-23",29.968],["2008-12-24",21.161],["2008-12-25",17.685],["2008-12-26",20.396],["2008-12-27",49.536],["2008-12-28",26.177],["2008-12-29",9.255],["2008-12-30",19.921],["2008-12-31",32.736],["2009-01-01",23.445],["2009-01-02",38.792],["2009-01-03",31.892],["2009-01-04",32.333],["2009-01-05",26.733],["2009-01-06",28.164],["2009-01-07",34.671],["2009-01-08",27.221],["2009-01-09",29.812],["2009-01-10",35.049],["2009-01-11",32.933],["2009-01-12",26.488],["2009-01-13",36.377],["2009-01-14",29.625],["2009-01-15",26.068],["2009-01-16",46.109],["2009-01-17",55.297],["2009-01-18",52.57],["2009-01-19",28.331],["2009-01-20",28.967],["2009-01-21",28.991],["2009-01-22",20.623],["2009-01-23",31.842],["2009-01-24",36.68],["2009-01-25",47.394],["2009-01-26",27.908],["2009-01-27",23.75],["2009-01-28",45.362],["2009-01-29",26.228],["2009-01-30",34.317],["2009-01-31",55.214],["2009-02-01",30.941],["2009-02-02",26.722],["2009-02-03",31.14],["2009-02-04",41.015],["2009-02-05",27.485],["2009-02-06",34.14],["2009-02-07",52.192],["2009-02-08",36.381],["2009-02-09",28.444],["2009-02-10",32.397],["2009-02-11",43.99],["2009-02-12",32.811],["2009-02-13",28.167],["2009-02-14",38.931],["2009-02-15",26.434],["2009-02-16",21.983],["2009-02-17",13.249],["2009-02-18",13.774],["2009-02-19",12.288],["2009-02-20",31.346],["2009-02-21",21.936],["2009-02-22",37.308],["2009-02-23",45.561],["2009-02-24",29.719],["2009-02-25",19.497],["2009-02-26",19.281],["2009-02-27",33.815],["2009-02-28",27.179],["2009-03-01",41.156],["2009-03-02",24.624],["2009-03-03",30.816],["2009-03-04",30.702],["2009-03-05",24.03],["2009-03-06",29.725],["2009-03-07",28.274],["2009-03-08",39.286],["2009-03-09",28.093],["2009-03-10",30.603],["2009-03-11",40.098],["2009-03-12",31.454],["2009-03-13",24.092],["2009-03-14",35.817],["2009-03-15",32.368],["2009-03-16",22.261],["2009-03-17",32.199],["2009-03-18",24.178],["2009-03-19",19.859],["2009-03-20",24.398],["2009-03-21",32.167],["2009-03-22",28.153],["2009-03-23",21.608],["2009-03-24",27.695],["2009-03-25",30.646],["2009-03-26",20.183],["2009-03-27",28.565],["2009-03-28",37.683],["2009-03-29",36.944],["2009-03-30",24.624],["2009-03-31",30.391],["2009-04-01",27.352],["2009-04-02",27.406],["2009-04-03",22.721],["2009-04-04",36.521],["2009-04-05",22.929],["2009-04-06",24.211],["2009-04-07",24.002],["2009-04-08",25.577],["2009-04-09",31.508],["2009-04-10",30.702],["2009-04-11",41.041],["2009-04-12",35.684],["2009-04-13",26.681],["2009-04-14",25.026],["2009-04-15",20.268],["2009-04-16",26.075],["2009-04-17",34.047],["2009-04-18",25.204],["2009-04-19",21.441],["2009-04-20",24.775],["2009-04-21",31.577],["2009-04-22",24.937],["2009-04-23",19.024],["2009-04-24",19.901],["2009-04-25",33.705],["2009-04-26",29.694],["2009-04-27",22.527],["2009-04-28",28.44],["2009-04-29",27.745],["2009-04-30",30.579],["2009-05-01",25.213],["2009-05-02",23.232],["2009-05-03",26.815],["2009-05-04",27.798],["2009-05-05",28.858],["2009-05-06",22.498],["2009-05-07",16.877],["2009-05-08",30.953],["2009-05-09",21.023],["2009-05-10",32.799],["2009-05-11",25.286],["2009-05-12",27.099],["2009-05-13",20.773],["2009-05-14",26.783],["2009-05-15",23.704],["2009-05-16",33.456],["2009-05-17",25.729],["2009-05-18",20.165],["2009-05-19",26.956],["2009-05-20",21.786],["2009-05-21",26.253],["2009-05-22",17.913],["2009-05-23",25.51],["2009-05-24",21.463],["2009-05-25",22.568],["2009-05-26",22.341],["2009-05-27",25.738],["2009-05-28",19.662],["2009-05-29",20.714],["2009-05-30",27.652],["2009-05-31",15.948],["2009-06-01",24.054],["2009-06-02",18.177],["2009-06-03",22.61],["2009-06-04",17.261],["2009-06-05",20.506],["2009-06-06",24.591],["2009-06-07",20.123],["2009-06-08",19.646],["2009-06-09",22.214],["2009-06-10",26.717],["2009-06-11",21.677],["2009-06-12",18.362],["2009-06-13",20.058],["2009-06-14",21.754],["2009-06-15",23.45],["2009-06-16",25.147],["2009-06-17",16.467],["2009-06-18",19.428],["2009-06-19",18.114],["2009-06-20",18.452],["2009-06-21",14.252],["2009-06-22",18.235],["2009-06-23",17.32],["2009-06-24",25.581],["2009-06-25",12.856],["2009-06-26",21.289],["2009-06-27",28.484],["2009-06-28",17.657],["2009-06-29",16.836],["2009-06-30",19.874],["2009-07-01",20.306],["2009-07-02",20.71],["2009-07-03",14.402],["2009-07-04",20.643],["2009-07-05",23.512],["2009-07-06",15.904],["2009-07-07",18.502],["2009-07-08",20.573],["2009-07-09",14.104],["2009-07-10",19.84],["2009-07-11",16.566],["2009-07-12",8.558],["2009-07-13",8.279],["2009-07-14",15.191],["2009-07-15",11.968],["2009-07-16",9.993],["2009-07-17",12.197],["2009-07-18",16.107],["2009-07-19",20.061],["2009-07-20",11.041],["2009-07-21",13.563],["2009-07-22",12.326],["2009-07-23",17.167],["2009-07-24",9.362],["2009-07-25",8.945],["2009-07-26",9.05],["2009-07-27",11.476],["2009-07-28",15.048],["2009-07-29",15.033],["2009-07-30",13.205],["2009-07-31",16.264],["2009-08-01",11.783],["2009-08-02",8.162],["2009-08-03",8.338],["2009-08-04",8.482],["2009-08-05",8.644],["2009-08-06",8.878],["2009-08-07",8.988],["2009-08-08",8.775],["2009-08-09",16.637],["2009-08-10",17.823],["2009-08-11",15.849],["2009-08-12",13.741],["2009-08-13",13.109],["2009-08-14",12.478],["2009-08-15",25.234],["2009-08-16",20.295],["2009-08-17",13.098],["2009-08-18",18.01],["2009-08-19",14.679],["2009-08-20",12.929],["2009-08-21",19.362],["2009-08-22",25.812],["2009-08-23",17.778],["2009-08-24",20.871],["2009-08-25",15.727],["2009-08-26",18.942],["2009-08-27",12.491],["2009-08-28",18.647],["2009-08-29",23.14],["2009-08-30",27.806],["2009-08-31",21.092],["2009-09-01",16.342],["2009-09-02",20.38],["2009-09-03",20.853],["2009-09-04",17.073],["2009-09-05",25.231],["2009-09-06",20.477],["2009-09-07",20.358],["2009-09-08",18.104],["2009-09-09",25.356],["2009-09-10",18.539],["2009-09-11",20.236],["2009-09-12",34.406],["2009-09-13",26.19],["2009-09-14",26.248],["2009-09-15",24.28],["2009-09-16",29.053],["2009-09-17",20.39],["2009-09-18",22.901],["2009-09-19",35.595],["2009-09-20",33.922],["2009-09-21",23.631],["2009-09-22",20.776],["2009-09-23",27.277],["2009-09-24",23.771],["2009-09-25",19.35],["2009-09-26",25.938],["2009-09-27",23.508],["2009-09-28",21.658],["2009-09-29",19.107],["2009-09-30",29.587],["2009-10-01",21.454],["2009-10-02",19.211],["2009-10-03",28.612],["2009-10-04",27.018],["2009-10-05",21.259],["2009-10-06",23.807],["2009-10-07",30.364],["2009-10-08",26.286],["2009-10-09",22.531],["2009-10-10",33.546],["2009-10-11",32.327],["2009-10-12",22.527],["2009-10-13",24.152],["2009-10-14",28.52],["2009-10-15",24.833],["2009-10-16",25.281],["2009-10-17",45.701],["2009-10-18",25.936],["2009-10-19",22.818],["2009-10-20",28.713],["2009-10-21",32.825],["2009-10-22",23.328],["2009-10-23",29.291],["2009-10-24",43.573],["2009-10-25",40.109],["2009-10-26",18.539],["2009-10-27",18.613],["2009-10-28",21.145],["2009-10-29",33.024],["2009-10-30",24.889],["2009-10-31",31.266],["2009-11-01",30.719],["2009-11-02",25.07],["2009-11-03",37.778],["2009-11-04",30.03],["2009-11-05",26.008],["2009-11-06",23.174],["2009-11-07",25.953],["2009-11-08",41.8],["2009-11-09",23.429],["2009-11-10",26.77],["2009-11-11",34.008],["2009-11-12",24.384],["2009-11-13",25.549],["2009-11-14",42.674],["2009-11-15",32.788],["2009-11-16",25.241],["2009-11-17",28.472],["2009-11-18",43.986],["2009-11-19",24.581],["2009-11-20",32.684],["2009-11-21",41.614],["2009-11-22",40.85],["2009-11-23",24.519],["2009-11-24",35.481],["2009-11-25",33.002],["2009-11-26",26.66],["2009-11-27",23.0],["2009-11-28",30.982],["2009-11-29",27.516],["2009-11-30",29.086],["2009-12-01",29.273],["2009-12-02",39.094],["2009-12-03",24.661],["2009-12-04",28.522],["2009-12-05",39.196],["2009-12-06",39.638],["2009-12-07",29.044],["2009-12-08",33.448],["2009-12-09",30.039],["2009-12-10",34.286],["2009-12-11",29.741],["2009-12-12",30.273],["2009-12-13",35.647],["2009-12-14",29.914],["2009-12-15",32.335],["2009-12-16",23.248],["2009-12-17",28.62],["2009-12-18",29.078],["2009-12-19",36.739],["2009-12-20",19.069],["2009-12-21",33.916],["2009-12-22",31.467],["2009-12-23",24.253],["2009-12-24",48.432],["2009-12-25",35.461],["2009-12-26",36.394],["2009-12-27",36.591],["2009-12-28",34.902],["2009-12-29",34.133],["2009-12-30",40.852],["2009-12-31",36.865],["2010-01-01",20.404],["2010-01-02",21.829],["2010-01-03",34.724],["2010-01-04",26.736],["2010-01-05",36.996],["2010-01-06",29.62],["2010-01-07",29.491],["2010-01-08",29.953],["2010-01-09",38.948],["2010-01-10",41.808],["2010-01-11",25.311],["2010-01-12",28.137],["2010-01-13",30.962],["2010-01-14",33.787],["2010-01-15",36.613],["2010-01-16",35.835],["2010-01-17",31.776],["2010-01-18",31.352],["2010-01-19",40.558],["2010-01-20",39.195],["2010-01-21",35.631],["2010-01-22",29.844],["2010-01-23",43.505],["2010-01-24",37.824],["2010-01-25",32.175],["2010-01-26",34.459],["2010-01-27",46.015],["2010-01-28",35.171],["2010-01-29",34.883],["2010-01-30",47.379],["2010-01-31",29.987],["2010-02-01",28.23],["2010-02-02",35.957],["2010-02-03",48.384],["2010-02-04",38.604],["2010-02-05",34.982],["2010-02-06",45.216],["2010-02-07",27.095],["2010-02-08",43.037],["2010-02-09",40.349],["2010-02-10",32.432],["2010-02-11",22.829],["2010-02-12",31.55],["2010-02-13",39.193],["2010-02-14",28.131],["2010-02-15",34.952],["2010-02-16",29.963],["2010-02-17",34.243],["2010-02-18",29.353],["2010-02-19",32.56],["2010-02-20",33.062],["2010-02-21",45.672],["2010-02-22",24.567],["2010-02-23",24.355],["2010-02-24",31.905],["2010-02-25",31.337],["2010-02-26",35.336],["2010-02-27",29.418],["2010-02-28",11.861],["2010-03-01",21.645],["2010-03-02",12.782],["2010-03-03",15.597],["2010-03-04",11.381],["2010-03-05",18.895],["2010-03-06",13.245],["2010-03-07",22.875],["2010-03-08",42.618],["2010-03-09",29.335],["2010-03-10",30.377],["2010-03-11",32.518],["2010-03-12",27.424],["2010-03-13",39.717],["2010-03-14",26.112],["2010-03-15",29.864],["2010-03-16",25.711],["2010-03-17",33.486],["2010-03-18",26.045],["2010-03-19",27.723],["2010-03-20",27.474],["2010-03-21",27.225],["2010-03-22",26.976],["2010-03-23",30.369],["2010-03-24",33.246],["2010-03-25",27.998],["2010-03-26",27.521],["2010-03-27",30.799],["2010-03-28",29.97],["2010-03-29",27.046],["2010-03-30",31.774],["2010-03-31",32.063],["2010-04-01",28.124],["2010-04-02",27.477],["2010-04-03",30.088],["2010-04-04",28.173],["2010-04-05",18.647],["2010-04-06",30.431],["2010-04-07",26.616],["2010-04-08",27.487],["2010-04-09",20.556],["2010-04-10",19.837],["2010-04-11",26.732],["2010-04-12",23.99],["2010-04-13",25.212],["2010-04-14",27.673],["2010-04-15",31.203],["2010-04-16",26.034],["2010-04-17",25.962],["2010-04-18",24.602],["2010-04-19",28.477],["2010-04-20",30.56],["2010-04-21",26.332],["2010-04-22",24.348],["2010-04-23",19.676],["2010-04-24",25.307],["2010-04-25",25.712],["2010-04-26",18.045],["2010-04-27",20.849],["2010-04-28",14.464],["2010-04-29",18.395],["2010-04-30",18.644],["2010-05-01",22.003],["2010-05-02",36.465],["2010-05-03",23.522],["2010-05-04",25.283],["2010-05-05",30.088],["2010-05-06",21.654],["2010-05-07",27.4],["2010-05-08",25.557],["2010-05-09",26.108],["2010-05-10",24.465],["2010-05-11",26.189],["2010-05-12",33.924],["2010-05-13",25.893],["2010-05-14",28.702],["2010-05-15",32.413],["2010-05-16",35.007],["2010-05-17",27.136],["2010-05-18",23.686],["2010-05-19",23.779],["2010-05-20",19.232],["2010-05-21",21.573],["2010-05-22",34.93],["2010-05-23",24.793],["2010-05-24",22.356],["2010-05-25",19.977],["2010-05-26",23.131],["2010-05-27",22.056],["2010-05-28",23.303],["2010-05-29",34.163],["2010-05-30",27.762],["2010-05-31",22.341],["2010-06-01",21.149],["2010-06-02",16.348],["2010-06-03",23.236],["2010-06-04",23.676],["2010-06-05",33.494],["2010-06-06",29.113],["2010-06-07",16.868],["2010-06-08",22.701],["2010-06-09",25.578],["2010-06-10",20.253],["2010-06-11",24.511],["2010-06-12",32.908],["2010-06-13",27.906],["2010-06-14",20.3],["2010-06-15",20.399],["2010-06-16",29.468],["2010-06-17",17.134],["2010-06-18",22.205],["2010-06-19",23.604],["2010-06-20",27.876],["2010-06-21",27.682],["2010-06-22",25.343],["2010-06-23",24.034],["2010-06-24",18.263],["2010-06-25",18.324],["2010-06-26",16.36],["2010-06-27",18.999],["2010-06-28",24.522],["2010-06-29",22.804],["2010-06-30",23.069],["2010-07-01",22.483],["2010-07-02",19.015],["2010-07-03",18.668],["2010-07-04",25.635],["2010-07-05",18.566],["2010-07-06",16.766],["2010-07-07",13.913],["2010-07-08",20.211],["2010-07-09",18.058],["2010-07-10",19.242],["2010-07-11",19.893],["2010-07-12",18.493],["2010-07-13",23.035],["2010-07-14",23.491],["2010-07-15",27.238],["2010-07-16",13.668],["2010-07-17",13.439],["2010-07-18",13.534],["2010-07-19",13.353],["2010-07-20",14.264],["2010-07-21",17.736],["2010-07-22",19.407],["2010-07-23",19.603],["2010-07-24",15.361],["2010-07-25",18.84],["2010-07-26",14.736],["2010-07-27",15.873],["2010-07-28",14.378],["2010-07-29",9.152],["2010-07-30",9.188],["2010-07-31",9.244],["2010-08-01",9.261],["2010-08-02",9.158],["2010-08-03",10.254],["2010-08-04",9.056],["2010-08-05",8.891],["2010-08-06",8.746],["2010-08-07",8.791],["2010-08-08",8.808],["2010-08-09",8.918],["2010-08-10",9.079],["2010-08-11",9.033],["2010-08-12",8.828],["2010-08-13",8.905],["2010-08-14",9.238],["2010-08-15",17.6],["2010-08-16",18.829],["2010-08-17",18.603],["2010-08-18",9.033],["2010-08-19",8.828],["2010-08-20",8.905],["2010-08-21",9.238],["2010-08-22",17.6],["2010-08-23",12.761],["2010-08-24",12.049],["2010-08-25",16.34],["2010-08-26",12.621],["2010-08-27",33.844],["2010-08-28",24.048],["2010-08-29",27.808],["2010-08-30",24.913],["2010-08-31",22.752],["2010-09-01",26.555],["2010-09-02",23.208],["2010-09-03",22.44],["2010-09-04",29.064],["2010-09-05",22.05],["2010-09-06",23.715],["2010-09-07",24.198],["2010-09-08",21.73],["2010-09-09",20.645],["2010-09-10",22.135],["2010-09-11",24.389],["2010-09-12",26.868],["2010-09-13",17.939],["2010-09-14",23.845],["2010-09-15",16.435],["2010-09-16",22.329],["2010-09-17",24.96],["2010-09-18",20.799],["2010-09-19",15.327],["2010-09-20",28.047],["2010-09-21",18.523],["2010-09-22",25.173],["2010-09-23",24.164],["2010-09-24",22.133],["2010-09-25",20.799],["2010-09-26",15.327],["2010-09-27",28.047],["2010-09-28",18.523],["2010-09-29",28.074],["2010-09-30",20.805],["2010-10-01",25.08],["2010-10-02",32.054],["2010-10-03",30.511],["2010-10-04",29.599],["2010-10-05",30.91],["2010-10-06",21.924],["2010-10-07",30.166],["2010-10-08",25.174],["2010-10-09",26.863],["2010-10-10",33.315],["2010-10-11",27.043],["2010-10-12",26.328],["2010-10-13",34.565],["2010-10-14",35.585],["2010-10-15",26.605],["2010-10-16",16.667],["2010-10-17",17.456],["2010-10-18",45.231],["2010-10-19",32.1],["2010-10-20",28.799],["2010-10-21",22.587],["2010-10-22",27.815],["2010-10-23",38.221],["2010-10-24",39.87],["2010-10-25",19.388],["2010-10-26",15.765],["2010-10-27",21.005],["2010-10-28",24.389],["2010-10-29",20.074],["2010-10-30",35.878],["2010-10-31",24.607],["2010-11-01",23.053],["2010-11-02",19.851],["2010-11-03",21.555],["2010-11-04",42.586],["2010-11-05",28.935],["2010-11-06",30.09],["2010-11-07",27.897],["2010-11-08",30.426],["2010-11-09",33.702],["2010-11-10",32.442],["2010-11-11",29.56],["2010-11-12",30.614],["2010-11-13",33.72],["2010-11-14",33.973],["2010-11-15",29.123],["2010-11-16",25.162],["2010-11-17",26.367],["2010-11-18",27.536],["2010-11-19",26.173],["2010-11-20",36.617],["2010-11-21",15.015],["2010-11-22",34.026],["2010-11-23",26.292],["2010-11-24",29.937],["2010-11-25",23.853],["2010-11-26",28.278]],"hoverAnimation": true,"label": {"show": false,"margin": 8,"richInheritPlainLabel": true,"valueAnimation": false},"logBase": 10,"seriesLayoutBy": "column","lineStyle": {"show": false},"areaStyle": {"opacity": 0},"zlevel": 0,"z": 0},{"type": "line","name": "Kalman level","connectNulls": false,"xAxisIndex": 0,"symbolSize": 4,"showSymbol": false,"smooth": false,"clip": true,"step": false,"stackStrategy": "samesign","data": [["2006-12-16",79.556],["2006-12-17",67.918],["2006-12-18",57.182],["2006-12-19",49.329],["2006-12-20",46.601],["2006-12-21",43.092],["2006-12-22",42.371],["2006-12-23",48.498],["2006-12-24",47.563],["2006-12-25",47.287],["2006-12-26",49.938],["2006-12-27",46.473],["2006-12-28",44.813],["2006-12-29",45.925],["2006-12-30",46.01],["2006-12-31",47.659],["2007-01-01",47.412],["2007-01-02",43.906],["2007-01-03",40.311],["2007-01-04",42.172],["2007-01-05",42.576],["2007-01-06",40.269],["2007-01-07",40.338],["2007-01-08",39.944],["2007-01-09",38.783],["2007-01-10",38.405],["2007-01-11",38.297],["2007-01-12",36.458],["2007-01-13",38.654],["2007-01-14",40.172],["2007-01-15",39.597],["2007-01-16",38.082],["2007-01-17",39.319],["2007-01-18",38.138],["2007-01-19",36.363],["2007-01-20",38.454],["2007-01-21",40.87],["2007-01-22",40.273],["2007-01-23",38.87],["2007-01-24",40.31],["2007-01-25",38.504],["2007-01-26",36.984],["2007-01-27",36.6],["2007-01-28",38.568],["2007-01-29",37.84],["2007-01-30",36.605],["2007-01-31",36.973],["2007-02-01",36.108],["2007-02-02",35.013],["2007-02-03",39.249],["2007-02-04",41.975],["2007-02-05",40.057],["2007-02-06",37.575],["2007-02-07",37.737],["2007-02-08",36.72],["2007-02-09",35.44],["2007-02-10",36.984],["2007-02-11",39.953],["2007-02-12",38.812],["2007-02-13",36.805],["2007-02-14",37.442],["2007-02-15",36.869],["2007-02-16",35.749],["2007-02-17",35.6],["2007-02-18",39.32],["2007-02-19",38.941],["2007-02-20",40.727],["2007-02-21",39.913],["2007-02-22",42.064],["2007-02-23",39.406],["2007-02-24",35.783],["2007-02-25",32.17],["2007-02-26",29.179],["2007-02-27",26.472],["2007-02-28",24.127],["2007-03-01",22.085],["2007-03-02",20.307],["2007-03-03",19.43],["2007-03-04",21.461],["2007-03-05",24.476],["2007-03-06",23.988],["2007-03-07",26.044],["2007-03-08",26.065],["2007-03-09",25.425],["2007-03-10",27.532],["2007-03-11",31.548],["2007-03-12",31.675],["2007-03-13",30.334],["2007-03-14",30.276],["2007-03-15",30.426],["2007-03-16",30.155],["2007-03-17",30.635],["2007-03-18",31.806],["2007-03-19",32.342],["2007-03-20",32.662],["2007-03-21",33.062],["2007-03-22",31.901],["2007-03-23",30.572],["2007-03-24",33.063],["2007-03-25",36.038],["2007-03-26",34.399],["2007-03-27",32.294],["2007-03-28",33.164],["2007-03-29",32.287],["2007-03-30",31.112],["2007-03-31",34.72],["2007-04-01",36.263],["2007-04-02",35.791],["2007-04-03",34.683],["2007-04-04",34.619],["2007-04-05",34.107],["2007-04-06",33.129],["2007-04-07",32.176],["2007-04-08",31.47],["2007-04-09",29.521],["2007-04-10",27.338],["2007-04-11",25.685],["2007-04-12",23.481],["2007-04-13",21.597],["2007-04-14",19.968],["2007-04-15",18.932],["2007-04-16",18.529],["2007-04-17",18.775],["2007-04-18",18.493],["2007-04-19",18.315],["2007-04-20",17.709],["2007-04-21",19.051],["2007-04-22",21.446],["2007-04-23",20.936],["2007-04-24",20.444],["2007-04-25",20.526],["2007-04-26",20.623],["2007-04-27",20.309],["2007-04-28",20.349],["2007-04-29",20.696],["2007-04-30",21.31],["2007-05-01",22.156],["2007-05-02",21.441],["2007-05-03",21.01],["2007-05-04",20.433],["2007-05-05",21.174],["2007-05-06",23.0],["2007-05-07",23.579],["2007-05-08",24.402],["2007-05-09",24.845],["2007-05-10",23.125],["2007-05-11",22.229],["2007-05-12",22.465],["2007-05-13",23.095],["2007-05-14",23.276],["2007-05-15",22.195],["2007-05-16",22.988],["2007-05-17",22.664],["2007-05-18",23.261],["2007-05-19",23.335],["2007-05-20",24.583],["2007-05-21",23.804],["2007-05-22",23.155],["2007-05-23",23.321],["2007-05-24",22.783],["2007-05-25",23.326],["2007-05-26",23.574],["2007-05-27",25.198],["2007-05-28",25.473],["2007-05-29",24.448],["2007-05-30",24.762],["2007-05-31",23.56],["2007-06-01",22.752],["2007-06-02",23.014],["2007-06-03",24.611],["2007-06-04",23.37],["2007-06-05",23.494],["2007-06-06",24.121],["2007-06-07",23.106],["2007-06-08",24.778],["2007-06-09",23.904],["2007-06-10",23.699],["2007-06-11",22.321],["2007-06-12",21.398],["2007-06-13",20.614],["2007-06-14",20.663],["2007-06-15",20.114],["2007-06-16",21.895],["2007-06-17",23.286],["2007-06-18",21.707],["2007-06-19",20.7],["2007-06-20",20.331],["2007-06-21",19.424],["2007-06-22",18.108],["2007-06-23",16.771],["2007-06-24",16.131],["2007-06-25",16.36],["2007-06-26",16.279],["2007-06-27",17.386],["2007-06-28",17.94],["2007-06-29",18.443],["2007-06-30",18.945],["2007-07-01",18.703],["2007-07-02",18.363],["2007-07-03",18.271],["2007-07-04",18.067],["2007-07-05",18.008],["2007-07-06",17.984],["2007-07-07",18.597],["2007-07-08",18.538],["2007-07-09",18.687],["2007-07-10",18.22],["2007-07-11",17.405],["2007-07-12",17.461],["2007-07-13",16.905],["2007-07-14",17.506],["2007-07-15",17.413],["2007-07-16",16.993],["2007-07-17",16.335],["2007-07-18",15.845],["2007-07-19",15.246],["2007-07-20",15.675],["2007-07-21",15.938],["2007-07-22",16.862],["2007-07-23",16.816],["2007-07-24",16.413],["2007-07-25",15.288],["2007-07-26",15.304],["2007-07-27",15.928],["2007-07-28",17.391],["2007-07-29",15.805],["2007-07-30",14.747],["2007-07-31",14.588],["2007-08-01",15.029],["2007-08-02",15.287],["2007-08-03",15.608],["2007-08-04",16.066],["2007-08-05",15.678],["2007-08-06",16.005],["2007-08-07",17.154],["2007-08-08",17.366],["2007-08-09",17.431],["2007-08-10",17.392],["2007-08-11",17.498],["2007-08-12",17.919],["2007-08-13",18.09],["2007-08-14",17.774],["2007-08-15",18.049],["2007-08-16",17.776],["2007-08-17",17.651],["2007-08-18",16.09],["2007-08-19",17.093],["2007-08-20",17.781],["2007-08-21",16.849],["2007-08-22",17.286],["2007-08-23",17.451],["2007-08-24",18.791],["2007-08-25",18.843],["2007-08-26",19.248],["2007-08-27",19.373],["2007-08-28",19.009],["2007-08-29",18.147],["2007-08-30",18.397],["2007-08-31",18.783],["2007-09-01",20.045],["2007-09-02",21.055],["2007-09-03",20.562],["2007-09-04",21.333],["2007-09-05",21.238],["2007-09-06",20.419],["2007-09-07",20.664],["2007-09-08",21.169],["2007-09-09",22.068],["2007-09-10",21.614],["2007-09-11",20.926],["2007-09-12",20.997],["2007-09-13",20.748],["2007-09-14",20.507],["2007-09-15",20.211],["2007-09-16",21.176],["2007-09-17",21.595],["2007-09-18",21.313],["2007-09-19",21.357],["2007-09-20",21.3],["2007-09-21",21.214],["2007-09-22",21.002],["2007-09-23",21.348],["2007-09-24",21.51],["2007-09-25",22.55],["2007-09-26",23.587],["2007-09-27",23.537],["2007-09-28",24.126],["2007-09-29",25.991],["2007-09-30",25.896],["2007-10-01",26.263],["2007-10-02",27.631],["2007-10-03",26.803],["2007-10-04",26.606],["2007-10-05",26.161],["2007-10-06",26.571],["2007-10-07",27.695],["2007-10-08",26.451],["2007-10-09",26.672],["2007-10-10",25.721],["2007-10-11",26.136],["2007-10-12",26.897],["2007-10-13",27.584],["2007-10-14",28.476],["2007-10-15",27.505],["2007-10-16",28.195],["2007-10-17",27.943],["2007-10-18",27.596],["2007-10-19",28.54],["2007-10-20",28.425],["2007-10-21",28.945],["2007-10-22",28.761],["2007-10-23",29.27],["2007-10-24",29.51],["2007-10-25",29.693],["2007-10-26",28.937],["2007-10-27",29.046],["2007-10-28",26.343],["2007-10-29",24.07],["2007-10-30",22.679],["2007-10-31",22.509],["2007-11-01",20.633],["2007-11-02",21.084],["2007-11-03",19.388],["2007-11-04",20.096],["2007-11-05",20.743],["2007-11-06",22.583],["2007-11-07",23.659],["2007-11-08",23.838],["2007-11-09",25.465],["2007-11-10",27.845],["2007-11-11",28.321],["2007-11-12",29.324],["2007-11-13",30.323],["2007-11-14",30.825],["2007-11-15",30.04],["2007-11-16",31.154],["2007-11-17",32.781],["2007-11-18",33.258],["2007-11-19",32.661],["2007-11-20",32.96],["2007-11-21",32.467],["2007-11-22",32.433],["2007-11-23",33.699],["2007-11-24",33.429],["2007-11-25",32.089],["2007-11-26",31.308],["2007-11-27",33.334],["2007-11-28",32.554],["2007-11-29",32.043],["2007-11-30",32.942],["2007-12-01",35.486],["2007-12-02",37.28],["2007-12-03",36.238],["2007-12-04",36.003],["2007-12-05",35.988],["2007-12-06",36.71],["2007-12-07",35.757],["2007-12-08",35.907],["2007-12-09",36.171],["2007-12-10",35.267],["2007-12-11",35.682],["2007-12-12",34.468],["2007-12-13",33.984],["2007-12-14",33.843],["2007-12-15",35.394],["2007-12-16",36.797],["2007-12-17",35.897],["2007-12-18",36.928],["2007-12-19",36.885],["2007-12-20",36.307],["2007-12-21",35.877],["2007-12-22",36.884],["2007-12-23",37.314],["2007-12-24",37.356],["2007-12-25",38.352],["2007-12-26",38.965],["2007-12-27",39.392],["2007-12-28",41.038],["2007-12-29",42.876],["2007-12-30",42.846],["2007-12-31",42.068],["2008-01-01",42.585],["2008-01-02",40.585],["2008-01-03",38.553],["2008-01-04",38.506],["2008-01-05",38.227],["2008-01-06",37.198],["2008-01-07",36.021],["2008-01-08",35.762],["2008-01-09",34.978],["2008-01-10",34.528],["2008-01-11",33.725],["2008-01-12",35.587],["2008-01-13",37.231],["2008-01-14",36.772],["2008-01-15",37.827],["2008-01-16",37.534],["2008-01-17",36.041],["2008-01-18",36.095],["2008-01-19",35.688],["2008-01-20",34.807],["2008-01-21",34.303],["2008-01-22",34.889],["2008-01-23",34.426],["2008-01-24",33.502],["2008-01-25",34.007],["2008-01-26",35.752],["2008-01-27",36.272],["2008-01-28",36.561],["2008-01-29",37.621],["2008-01-30",36.266],["2008-01-31",35.779],["2008-02-01",34.434],["2008-02-02",36.35],["2008-02-03",36.138],["2008-02-04",34.952],["2008-02-05",35.776],["2008-02-06",34.728],["2008-02-07",33.487],["2008-02-08",33.358],["2008-02-09",33.579],["2008-02-10",33.952],["2008-02-11",33.195],["2008-02-12",33.186],["2008-02-13",32.987],["2008-02-14",32.164],["2008-02-15",32.33],["2008-02-16",33.224],["2008-02-17",33.092],["2008-02-18",32.057],["2008-02-19",32.504],["2008-02-20",33.171],["2008-02-21",32.388],["2008-02-22",31.925],["2008-02-23",31.752],["2008-02-24",30.342],["2008-02-25",27.451],["2008-02-26",24.948],["2008-02-27",22.905],["2008-02-28",21.005],["2008-02-29",21.165],["2008-03-01",20.884],["2008-03-02",20.685],["2008-03-03",20.244],["2008-03-04",21.242],["2008-03-05",22.917],["2008-03-06",25.395],["2008-03-07",26.14],["2008-03-08",27.634],["2008-03-09",27.42],["2008-03-10",27.361],["2008-03-11",28.588],["2008-03-12",28.717],["2008-03-13",28.613],["2008-03-14",29.697],["2008-03-15",29.245],["2008-03-16",29.349],["2008-03-17",29.23],["2008-03-18",29.59],["2008-03-19",28.564],["2008-03-20",27.553],["2008-03-21",28.461],["2008-03-22",29.22],["2008-03-23",30.478],["2008-03-24",30.802],["2008-03-25",31.17],["2008-03-26",30.65],["2008-03-27",29.622],["2008-03-28",29.859],["2008-03-29",31.352],["2008-03-30",31.935],["2008-03-31",30.752],["2008-04-01",31.375],["2008-04-02",30.956],["2008-04-03",29.356],["2008-04-04",29.072],["2008-04-05",29.569],["2008-04-06",29.398],["2008-04-07",28.904],["2008-04-08",30.932],["2008-04-09",29.533],["2008-04-10",28.886],["2008-04-11",29.204],["2008-04-12",31.505],["2008-04-13",32.258],["2008-04-14",31.498],["2008-04-15",31.016],["2008-04-16",30.199],["2008-04-17",29.285],["2008-04-18",29.517],["2008-04-19",30.577],["2008-04-20",30.482],["2008-04-21",29.022],["2008-04-22",28.772],["2008-04-23",27.962],["2008-04-24",26.57],["2008-04-25",25.853],["2008-04-26",24.429],["2008-04-27",23.425],["2008-04-28",21.785],["2008-04-29",23.247],["2008-04-30",22.603],["2008-05-01",20.89],["2008-05-02",21.426],["2008-05-03",21.435],["2008-05-04",21.841],["2008-05-05",21.965],["2008-05-06",23.002],["2008-05-07",22.554],["2008-05-08",24.231],["2008-05-09",24.875],["2008-05-10",25.79],["2008-05-11",25.93],["2008-05-12",25.86],["2008-05-13",25.696],["2008-05-14",25.79],["2008-05-15",24.945],["2008-05-16",25.282],["2008-05-17",25.591],["2008-05-18",26.181],["2008-05-19",24.993],["2008-05-20",25.173],["2008-05-21",24.764],["2008-05-22",23.646],["2008-05-23",23.791],["2008-05-24",24.127],["2008-05-25",25.446],["2008-05-26",24.926],["2008-05-27",25.394],["2008-05-28",24.495],["2008-05-29",23.76],["2008-05-30",23.698],["2008-05-31",24.18],["2008-06-01",25.054],["2008-06-02",24.112],["2008-06-03",24.444],["2008-06-04",24.712],["2008-06-05",23.916],["2008-06-06",23.439],["2008-06-07",24.484],["2008-06-08",24.645],["2008-06-09",24.309],["2008-06-10",23.449],["2008-06-11",22.826],["2008-06-12",22.584],["2008-06-13",23.727],["2008-06-14",23.642],["2008-06-15",25.554],["2008-06-16",25.049],["2008-06-17",24.263],["2008-06-18",25.224],["2008-06-19",25.388],["2008-06-20",25.724],["2008-06-21",26.143],["2008-06-22",26.138],["2008-06-23",25.443],["2008-06-24",25.944],["2008-06-25",25.296],["2008-06-26",24.282],["2008-06-27",24.937],["2008-06-28",24.306],["2008-06-29",22.749],["2008-06-30",21.517],["2008-07-01",21.351],["2008-07-02",21.057],["2008-07-03",20.694],["2008-07-04",20.036],["2008-07-05",20.622],["2008-07-06",21.869],["2008-07-07",21.147],["2008-07-08",20.834],["2008-07-09",20.108],["2008-07-10",20.206],["2008-07-11",20.298],["2008-07-12",20.542],["2008-07-13",20.592],["2008-07-14",20.378],["2008-07-15",20.231],["2008-07-16",19.931],["2008-07-17",20.201],["2008-07-18",20.31],["2008-07-19",20.586],["2008-07-20",19.941],["2008-07-21",19.853],["2008-07-22",18.863],["2008-07-23",18.447],["2008-07-24",18.418],["2008-07-25",17.892],["2008-07-26",17.326],["2008-07-27",17.562],["2008-07-28",17.062],["2008-07-29",17.376],["2008-07-30",17.941],["2008-07-31",18.635],["2008-08-01",17.804],["2008-08-02",16.569],["2008-08-03",15.494],["2008-08-04",15.927],["2008-08-05",15.645],["2008-08-06",14.299],["2008-08-07",13.15],["2008-08-08",12.081],["2008-08-09",11.278],["2008-08-10",10.565],["2008-08-11",9.989],["2008-08-12",9.308],["2008-08-13",8.702],["2008-08-14",8.149],["2008-08-15",7.676],["2008-08-16",7.268],["2008-08-17",6.914],["2008-08-18",6.604],["2008-08-19",6.337],["2008-08-20",6.092],["2008-08-21",5.863],["2008-08-22",5.677],["2008-08-23",5.488],["2008-08-24",5.324],["2008-08-25",5.172],["2008-08-26",5.056],["2008-08-27",4.957],["2008-08-28",4.893],["2008-08-29",4.836],["2008-08-30",4.793],["2008-08-31",7.459],["2008-09-01",9.216],["2008-09-02",11.041],["2008-09-03",12.636],["2008-09-04",13.662],["2008-09-05",13.781],["2008-09-06",16.069],["2008-09-07",16.966],["2008-09-08",17.606],["2008-09-09",17.833],["2008-09-10",18.34],["2008-09-11",18.182],["2008-09-12",18.845],["2008-09-13",19.945],["2008-09-14",20.779],["2008-09-15",21.769],["2008-09-16",21.584],["2008-09-17",22.076],["2008-09-18",22.473],["2008-09-19",22.848],["2008-09-20",22.702],["2008-09-21",23.077],["2008-09-22",23.02],["2008-09-23",22.694],["2008-09-24",23.478],["2008-09-25",22.868],["2008-09-26",22.999],["2008-09-27",24.64],["2008-09-28",25.195],["2008-09-29",25.173],["2008-09-30",24.876],["2008-10-01",25.71],["2008-10-02",25.277],["2008-10-03",25.488],["2008-10-04",26.742],["2008-10-05",26.622],["2008-10-06",26.241],["2008-10-07",26.575],["2008-10-08",27.16],["2008-10-09",27.937],["2008-10-10",27.59],["2008-10-11",27.621],["2008-10-12",28.172],["2008-10-13",27.67],["2008-10-14",27.558],["2008-10-15",28.664],["2008-10-16",28.365],["2008-10-17",28.727],["2008-10-18",29.859],["2008-10-19",30.255],["2008-10-20",29.931],["2008-10-21",30.519],["2008-10-22",30.113],["2008-10-23",30.165],["2008-10-24",30.875],["2008-10-25",30.255],["2008-10-26",27.417],["2008-10-27",24.955],["2008-10-28",24.582],["2008-10-29",24.884],["2008-10-30",24.018],["2008-10-31",23.677],["2008-11-01",22.381],["2008-11-02",21.432],["2008-11-03",20.469],["2008-11-04",21.203],["2008-11-05",25.294],["2008-11-06",25.449],["2008-11-07",25.652],["2008-11-08",26.078],["2008-11-09",28.305],["2008-11-10",29.188],["2008-11-11",30.736],["2008-11-12",31.495],["2008-11-13",30.064],["2008-11-14",29.664],["2008-11-15",32.413],["2008-11-16",33.337],["2008-11-17",32.291],["2008-11-18",31.877],["2008-11-19",31.718],["2008-11-20",31.255],["2008-11-21",30.813],["2008-11-22",30.511],["2008-11-23",33.975],["2008-11-24",36.554],["2008-11-25",37.673],["2008-11-26",36.038],["2008-11-27",36.477],["2008-11-28",35.813],["2008-11-29",36.441],["2008-11-30",36.913],["2008-12-01",35.599],["2008-12-02",34.847],["2008-12-03",34.11],["2008-12-04",33.433],["2008-12-05",33.549],["2008-12-06",34.671],["2008-12-07",35.52],["2008-12-08",34.943],["2008-12-09",34.738],["2008-12-10",35.033],["2008-12-11",33.563],["2008-12-12",33.128],["2008-12-13",32.772],["2008-12-14",32.85],["2008-12-15",32.465],["2008-12-16",32.134],["2008-12-17",32.509],["2008-12-18",32.04],["2008-12-19",31.951],["2008-12-20",32.669],["2008-12-21",34.17],["2008-12-22",34.095],["2008-12-23",33.551],["2008-12-24",31.918],["2008-12-25",30.043],["2008-12-26",28.771],["2008-12-27",31.508],["2008-12-28",30.805],["2008-12-29",27.965],["2008-12-30",26.905],["2008-12-31",27.674],["2009-01-01",27.116],["2009-01-02",28.655],["2009-01-03",29.082],["2009-01-04",29.51],["2009-01-05",29.144],["2009-01-06",29.015],["2009-01-07",29.76],["2009-01-08",29.426],["2009-01-09",29.477],["2009-01-10",30.211],["2009-01-11",30.57],["2009-01-12",30.032],["2009-01-13",30.868],["2009-01-14",30.704],["2009-01-15",30.093],["2009-01-16",32.204],["2009-01-17",35.247],["2009-01-18",37.53],["2009-01-19",36.317],["2009-01-20",35.349],["2009-01-21",34.511],["2009-01-22",32.681],["2009-01-23",32.57],["2009-01-24",33.112],["2009-01-25",34.994],["2009-01-26",34.06],["2009-01-27",32.702],["2009-01-28",34.37],["2009-01-29",33.297],["2009-01-30",33.432],["2009-01-31",36.302],["2009-02-01",35.595],["2009-02-02",34.426],["2009-02-03",33.993],["2009-02-04",34.918],["2009-02-05",33.939],["2009-02-06",33.965],["2009-02-07",36.367],["2009-02-08",36.369],["2009-02-09",35.325],["2009-02-10",34.939],["2009-02-11",36.132],["2009-02-12",35.694],["2009-02-13",34.702],["2009-02-14",35.259],["2009-02-15",34.096],["2009-02-16",32.5],["2009-02-17",29.963],["2009-02-18",27.83],["2009-02-19",25.782],["2009-02-20",26.515],["2009-02-21",25.912],["2009-02-22",27.413],["2009-02-23",29.805],["2009-02-24",29.794],["2009-02-25",28.437],["2009-02-26",27.23],["2009-02-27",28.098],["2009-02-28",27.977],["2009-03-01",29.714],["2009-03-02",29.043],["2009-03-03",29.277],["2009-03-04",29.464],["2009-03-05",28.748],["2009-03-06",28.877],["2009-03-07",28.798],["2009-03-08",30.18],["2009-03-09",29.905],["2009-03-10",29.997],["2009-03-11",31.328],["2009-03-12",31.345],["2009-03-13",30.389],["2009-03-14",31.104],["2009-03-15",31.271],["2009-03-16",30.083],["2009-03-17",30.362],["2009-03-18",29.547],["2009-03-19",28.271],["2009-03-20",27.76],["2009-03-21",28.341],["2009-03-22",28.316],["2009-03-23",27.432],["2009-03-24",27.467],["2009-03-25",27.886],["2009-03-26",26.871],["2009-03-27",27.094],["2009-03-28",28.489],["2009-03-29",29.604],["2009-03-30",28.947],["2009-03-31",29.138],["2009-04-01",28.902],["2009-04-02",28.705],["2009-04-03",27.917],["2009-04-04",29.05],["2009-04-05",28.244],["2009-04-06",27.712],["2009-04-07",27.223],["2009-04-08",27.006],["2009-04-09",27.599],["2009-04-10",28.008],["2009-04-11",29.726],["2009-04-12",30.511],["2009-04-13",30.006],["2009-04-14",29.35],["2009-04-15",28.153],["2009-04-16",27.879],["2009-04-17",28.692],["2009-04-18",28.232],["2009-04-19",27.337],["2009-04-20",27.0],["2009-04-21",27.603],["2009-04-22",27.252],["2009-04-23",26.167],["2009-04-24",25.342],["2009-04-25",26.444],["2009-04-26",26.872],["2009-04-27",26.299],["2009-04-28",26.581],["2009-04-29",26.735],["2009-04-30",27.241],["2009-05-01",26.974],["2009-05-02",26.481],["2009-05-03",26.525],["2009-05-04",26.693],["2009-05-05",26.978],["2009-05-06",26.388],["2009-05-07",25.135],["2009-05-08",25.901],["2009-05-09",25.258],["2009-05-10",26.252],["2009-05-11",26.125],["2009-05-12",26.253],["2009-05-13",25.531],["2009-05-14",25.696],["2009-05-15",25.433],["2009-05-16",26.491],["2009-05-17",26.39],["2009-05-18",25.57],["2009-05-19",25.753],["2009-05-20",25.23],["2009-05-21",25.365],["2009-05-22",24.383],["2009-05-23",24.531],["2009-05-24",24.127],["2009-05-25",23.922],["2009-05-26",23.713],["2009-05-27",23.98],["2009-05-28",23.411],["2009-05-29",23.056],["2009-05-30",23.661],["2009-05-31",22.645],["2009-06-01",22.831],["2009-06-02",22.218],["2009-06-03",22.269],["2009-06-04",21.609],["2009-06-05",21.464],["2009-06-06",21.876],["2009-06-07",21.645],["2009-06-08",21.382],["2009-06-09",21.491],["2009-06-10",22.18],["2009-06-11",22.114],["2009-06-12",21.619],["2009-06-13",21.414],["2009-06-14",21.459],["2009-06-15",21.721],["2009-06-16",22.172],["2009-06-17",21.421],["2009-06-18",21.158],["2009-06-19",20.757],["2009-06-20",20.453],["2009-06-21",19.636],["2009-06-22",19.451],["2009-06-23",19.171],["2009-06-24",20.015],["2009-06-25",19.072],["2009-06-26",19.364],["2009-06-27",20.566],["2009-06-28",20.182],["2009-06-29",19.741],["2009-06-30",19.759],["2009-07-01",19.831],["2009-07-02",19.947],["2009-07-03",19.216],["2009-07-04",19.404],["2009-07-05",19.946],["2009-07-06",19.413],["2009-07-07",19.293],["2009-07-08",19.462],["2009-07-09",18.756],["2009-07-10",18.899],["2009-07-11",18.591],["2009-07-12",17.269],["2009-07-13",16.084],["2009-07-14",15.967],["2009-07-15",15.44],["2009-07-16",14.722],["2009-07-17",14.389],["2009-07-18",14.616],["2009-07-19",15.333],["2009-07-20",14.768],["2009-07-21",14.609],["2009-07-22",14.308],["2009-07-23",14.685],["2009-07-24",13.983],["2009-07-25",13.319],["2009-07-26",12.757],["2009-07-27",12.588],["2009-07-28",12.912],["2009-07-29",13.192],["2009-07-30",13.193],["2009-07-31",13.598],["2009-08-01",13.359],["2009-08-02",12.674],["2009-08-03",12.103],["2009-08-04",11.626],["2009-08-05",11.233],["2009-08-06",10.922],["2009-08-07",10.667],["2009-08-08",10.418],["2009-08-09",11.238],["2009-08-10",12.105],["2009-08-11",12.599],["2009-08-12",12.749],["2009-08-13",12.797],["2009-08-14",12.755],["2009-08-15",14.399],["2009-08-16",15.176],["2009-08-17",14.902],["2009-08-18",15.312],["2009-08-19",15.228],["2009-08-20",14.925],["2009-08-21",15.51],["2009-08-22",16.868],["2009-08-23",16.988],["2009-08-24",17.499],["2009-08-25",17.266],["2009-08-26",17.487],["2009-08-27",16.828],["2009-08-28",17.068],["2009-08-29",17.868],["2009-08-30",19.178],["2009-08-31",19.43],["2009-09-01",19.023],["2009-09-02",19.202],["2009-09-03",19.42],["2009-09-04",19.11],["2009-09-05",19.917],["2009-09-06",19.991],["2009-09-07",20.039],["2009-09-08",19.784],["2009-09-09",20.518],["2009-09-10",20.258],["2009-09-11",20.255],["2009-09-12",22.119],["2009-09-13",22.656],["2009-09-14",23.129],["2009-09-15",23.281],["2009-09-16",24.041],["2009-09-17",23.56],["2009-09-18",23.473],["2009-09-19",25.071],["2009-09-20",26.237],["2009-09-21",25.894],["2009-09-22",25.219],["2009-09-23",25.49],["2009-09-24",25.264],["2009-09-25",24.485],["2009-09-26",24.676],["2009-09-27",24.522],["2009-09-28",24.145],["2009-09-29",23.481],["2009-09-30",24.285],["2009-10-01",23.912],["2009-10-02",23.293],["2009-10-03",23.994],["2009-10-04",24.392],["2009-10-05",23.979],["2009-10-06",23.957],["2009-10-07",24.801],["2009-10-08",24.997],["2009-10-09",24.672],["2009-10-10",25.841],["2009-10-11",26.696],["2009-10-12",26.147],["2009-10-13",25.884],["2009-10-14",26.231],["2009-10-15",26.047],["2009-10-16",25.946],["2009-10-17",28.549],["2009-10-18",28.205],["2009-10-19",27.495],["2009-10-20",27.656],["2009-10-21",28.337],["2009-10-22",27.677],["2009-10-23",27.89],["2009-10-24",29.956],["2009-10-25",31.294],["2009-10-26",29.613],["2009-10-27",28.164],["2009-10-28",27.239],["2009-10-29",28.001],["2009-10-30",27.591],["2009-10-31",28.075],["2009-11-01",28.424],["2009-11-02",27.982],["2009-11-03",29.273],["2009-11-04",29.373],["2009-11-05",28.929],["2009-11-06",28.171],["2009-11-07",27.879],["2009-11-08",29.713],["2009-11-09",28.885],["2009-11-10",28.606],["2009-11-11",29.318],["2009-11-12",28.668],["2009-11-13",28.257],["2009-11-14",30.157],["2009-11-15",30.504],["2009-11-16",29.81],["2009-11-17",29.634],["2009-11-18",31.525],["2009-11-19",30.61],["2009-11-20",30.883],["2009-11-21",32.297],["2009-11-22",33.424],["2009-11-23",32.251],["2009-11-24",32.676],["2009-11-25",32.719],["2009-11-26",31.921],["2009-11-27",30.745],["2009-11-28",30.777],["2009-11-29",30.347],["2009-11-30",30.181],["2009-12-01",30.061],["2009-12-02",31.252],["2009-12-03",30.383],["2009-12-04",30.138],["2009-12-05",31.332],["2009-12-06",32.426],["2009-12-07",31.98],["2009-12-08",32.174],["2009-12-09",31.893],["2009-12-10",32.208],["2009-12-11",31.883],["2009-12-12",31.671],["2009-12-13",32.195],["2009-12-14",31.894],["2009-12-15",31.952],["2009-12-16",30.805],["2009-12-17",30.517],["2009-12-18",30.328],["2009-12-19",31.173],["2009-12-20",29.578],["2009-12-21",30.149],["2009-12-22",30.323],["2009-12-23",29.523],["2009-12-24",32.015],["2009-12-25",32.469],["2009-12-26",32.986],["2009-12-27",33.461],["2009-12-28",33.651],["2009-12-29",33.714],["2009-12-30",34.655],["2009-12-31",34.946],["2010-01-01",33.03],["2010-01-02",31.554],["2010-01-03",31.972],["2010-01-04",31.282],["2010-01-05",32.035],["2010-01-06",31.716],["2010-01-07",31.423],["2010-01-08",31.23],["2010-01-09",32.247],["2010-01-10",33.507],["2010-01-11",32.427],["2010-01-12",31.861],["2010-01-13",31.743],["2010-01-14",32.012],["2010-01-15",32.618],["2010-01-16",33.042],["2010-01-17",32.875],["2010-01-18",32.675],["2010-01-19",33.714],["2010-01-20",34.436],["2010-01-21",34.593],["2010-01-22",33.968],["2010-01-23",35.224],["2010-01-24",35.567],["2010-01-25",35.12],["2010-01-26",35.033],["2010-01-27",36.48],["2010-01-28",36.308],["2010-01-29",36.12],["2010-01-30",37.603],["2010-01-31",36.6],["2010-02-01",35.497],["2010-02-02",35.557],["2010-02-03",37.248],["2010-02-04",37.426],["2010-02-05",37.104],["2010-02-06",38.173],["2010-02-07",36.713],["2010-02-08",37.547],["2010-02-09",37.916],["2010-02-10",37.193],["2010-02-11",35.3],["2010-02-12",34.806],["2010-02-13",35.384],["2010-02-14",34.429],["2010-02-15",34.498],["2010-02-16",33.9],["2010-02-17",33.945],["2010-02-18",33.34],["2010-02-19",33.237],["2010-02-20",33.214],["2010-02-21",34.856],["2010-02-22",33.5],["2010-02-23",32.295],["2010-02-24",32.243],["2010-02-25",32.124],["2010-02-26",32.547],["2010-02-27",32.135],["2010-02-28",29.463],["2010-03-01",28.433],["2010-03-02",26.371],["2010-03-03",24.951],["2010-03-04",23.163],["2010-03-05",22.6],["2010-03-06",21.368],["2010-03-07",21.566],["2010-03-08",24.34],["2010-03-09",24.999],["2010-03-10",25.707],["2010-03-11",26.605],["2010-03-12",26.713],["2010-03-13",28.426],["2010-03-14",28.121],["2010-03-15",28.351],["2010-03-16",28.003],["2010-03-17",28.726],["2010-03-18",28.372],["2010-03-19",28.287],["2010-03-20",28.18],["2010-03-21",28.054],["2010-03-22",27.912],["2010-03-23",28.236],["2010-03-24",28.896],["2010-03-25",28.778],["2010-03-26",28.612],["2010-03-27",28.9],["2010-03-28",29.041],["2010-03-29",28.778],["2010-03-30",29.173],["2010-03-31",29.554],["2010-04-01",29.366],["2010-04-02",29.117],["2010-04-03",29.245],["2010-04-04",29.103],["2010-04-05",27.726],["2010-04-06",28.082],["2010-04-07",27.889],["2010-04-08",27.836],["2010-04-09",26.877],["2010-04-10",25.949],["2010-04-11",26.052],["2010-04-12",25.78],["2010-04-13",25.706],["2010-04-14",25.965],["2010-04-15",26.655],["2010-04-16",26.573],["2010-04-17",26.493],["2010-04-18",26.243],["2010-04-19",26.538],["2010-04-20",27.068],["2010-04-21",26.971],["2010-04-22",26.625],["2010-04-23",25.71],["2010-04-24",25.656],["2010-04-25",25.664],["2010-04-26",24.66],["2010-04-27",24.158],["2010-04-28",22.88],["2010-04-29",22.289],["2010-04-30",21.809],["2010-05-01",21.834],["2010-05-02",23.762],["2010-05-03",23.731],["2010-05-04",23.935],["2010-05-05",24.746],["2010-05-06",24.339],["2010-05-07",24.742],["2010-05-08",24.849],["2010-05-09",25.015],["2010-05-10",24.943],["2010-05-11",25.107],["2010-05-12",26.269],["2010-05-13",26.219],["2010-05-14",26.547],["2010-05-15",27.32],["2010-05-16",28.333],["2010-05-17",28.175],["2010-05-18",27.583],["2010-05-19",27.082],["2010-05-20",26.048],["2010-05-21",25.458],["2010-05-22",26.706],["2010-05-23",26.454],["2010-05-24",25.914],["2010-05-25",25.132],["2010-05-26",24.868],["2010-05-27",24.497],["2010-05-28",24.34],["2010-05-29",25.634],["2010-05-30",25.915],["2010-05-31",25.444],["2010-06-01",24.878],["2010-06-02",23.754],["2010-06-03",23.686],["2010-06-04",23.684],["2010-06-05",24.977],["2010-06-06",25.522],["2010-06-07",24.382],["2010-06-08",24.16],["2010-06-09",24.347],["2010-06-10",23.808],["2010-06-11",23.9],["2010-06-12",25.087],["2010-06-13",25.459],["2010-06-14",24.779],["2010-06-15",24.202],["2010-06-16",24.896],["2010-06-17",23.873],["2010-06-18",23.653],["2010-06-19",23.647],["2010-06-20",24.204],["2010-06-21",24.662],["2010-06-22",24.752],["2010-06-23",24.657],["2010-06-24",23.815],["2010-06-25",23.091],["2010-06-26",22.204],["2010-06-27",21.782],["2010-06-28",22.143],["2010-06-29",22.23],["2010-06-30",22.341],["2010-07-01",22.359],["2010-07-02",21.919],["2010-07-03",21.49],["2010-07-04",22.037],["2010-07-05",21.579],["2010-07-06",20.945],["2010-07-07",20.018],["2010-07-08",20.044],["2010-07-09",19.782],["2010-07-10",19.711],["2010-07-11",19.735],["2010-07-12",19.571],["2010-07-13",20.028],["2010-07-14",20.484],["2010-07-15",21.374],["2010-07-16",20.359],["2010-07-17",19.447],["2010-07-18",18.668],["2010-07-19",17.967],["2010-07-20",17.479],["2010-07-21",17.513],["2010-07-22",17.763],["2010-07-23",18.005],["2010-07-24",17.657],["2010-07-25",17.813],["2010-07-26",17.407],["2010-07-27",17.205],["2010-07-28",16.832],["2010-07-29",15.82],["2010-07-30",14.946],["2010-07-31",14.195],["2010-08-01",13.545],["2010-08-02",12.967],["2010-08-03",12.609],["2010-08-04",12.141],["2010-08-05",11.713],["2010-08-06",11.322],["2010-08-07",10.988],["2010-08-08",10.701],["2010-08-09",10.466],["2010-08-10",10.283],["2010-08-11",10.119],["2010-08-12",9.949],["2010-08-13",9.811],["2010-08-14",9.735],["2010-08-15",10.772],["2010-08-16",11.833],["2010-08-17",12.726],["2010-08-18",12.239],["2010-08-19",11.79],["2010-08-20",11.409],["2010-08-21",11.123],["2010-08-22",11.977],["2010-08-23",12.08],["2010-08-24",12.076],["2010-08-25",12.638],["2010-08-26",12.636],["2010-08-27",15.43],["2010-08-28",16.566],["2010-08-29",18.047],["2010-08-30",18.952],["2010-08-31",19.453],["2010-09-01",20.389],["2010-09-02",20.76],["2010-09-03",20.982],["2010-09-04",22.047],["2010-09-05",22.047],["2010-09-06",22.267],["2010-09-07",22.521],["2010-09-08",22.417],["2010-09-09",22.184],["2010-09-10",22.177],["2010-09-11",22.469],["2010-09-12",23.048],["2010-09-13",22.375],["2010-09-14",22.569],["2010-09-15",21.76],["2010-09-16",21.835],["2010-09-17",22.247],["2010-09-18",22.056],["2010-09-19",21.169],["2010-09-20",22.076],["2010-09-21",21.608],["2010-09-22",22.077],["2010-09-23",22.352],["2010-09-24",22.324],["2010-09-25",22.123],["2010-09-26",21.227],["2010-09-27",22.126],["2010-09-28",21.651],["2010-09-29",22.497],["2010-09-30",22.274],["2010-10-01",22.644],["2010-10-02",23.884],["2010-10-03",24.757],["2010-10-04",25.395],["2010-10-05",26.122],["2010-10-06",25.569],["2010-10-07",26.175],["2010-10-08",26.043],["2010-10-09",26.151],["2010-10-10",27.095],["2010-10-11",27.088],["2010-10-12",26.988],["2010-10-13",27.986],["2010-10-14",28.988],["2010-10-15",28.674],["2010-10-16",27.092],["2010-10-17",25.822],["2010-10-18",28.38],["2010-10-19",28.87],["2010-10-20",28.861],["2010-10-21",28.034],["2010-10-22",28.005],["2010-10-23",29.351],["2010-10-24",30.737],["2010-10-25",29.242],["2010-10-26",27.466],["2010-10-27",26.614],["2010-10-28",26.321],["2010-10-29",25.498],["2010-10-30",26.866],["2010-10-31",26.568],["2010-11-01",26.105],["2010-11-02",25.281],["2010-11-03",24.79],["2010-11-04",27.135],["2010-11-05",27.372],["2010-11-06",27.73],["2010-11-07",27.752],["2010-11-08",28.105],["2010-11-09",28.842],["2010-11-10",29.316],["2010-11-11",29.349],["2010-11-12",29.515],["2010-11-13",30.069],["2010-11-14",30.584],["2010-11-15",30.391],["2010-11-16",29.702],["2010-11-17",29.263],["2010-11-18",29.035],["2010-11-19",28.658],["2010-11-20",29.707],["2010-11-21",27.771],["2010-11-22",28.595],["2010-11-23",28.292],["2010-11-24",28.508],["2010-11-25",27.895],["2010-11-26",27.945]],"hoverAnimation": true,"label": {"show": false,"margin": 8,"richInheritPlainLabel": true,"valueAnimation": false},"logBase": 10,"seriesLayoutBy": "column","lineStyle": {"show": false},"areaStyle": {"opacity": 0},"zlevel": 0,"z": 0}],"legend": [{"data": ["daily kWh","Kalman level"],"selected": {},"show": true,"top": "0","padding": 5,"itemGap": 10,"itemWidth": 25,"itemHeight": 14,"backgroundColor": "transparent","borderColor": "#ccc","borderRadius": 0,"pageButtonItemGap": 5,"pageButtonPosition": "end","pageFormatter": "{current}/{total}","pageIconColor": "#2f4554","pageIconInactiveColor": "#aaa","pageIconSize": 15,"animationDurationUpdate": 800,"selector": false,"selectorPosition": "auto","selectorItemGap": 7,"selectorButtonGap": 10,"triggerEvent": false}],"tooltip": {"show": true,"trigger": "axis","triggerOn": "mousemove|click","axisPointer": {"type": "line"},"showContent": true,"alwaysShowContent": false,"showDelay": 0,"hideDelay": 100,"enterable": false,"confine": false,"appendToBody": false,"transitionDuration": 0.4,"displayTransition": true,"textStyle": {"fontSize": 14,"richInheritPlainLabel": true},"borderWidth": 0,"padding": 5,"order": "seriesAsc"},"xAxis": [{"show": true,"scale": false,"nameLocation": "end","nameGap": 15,"nameTruncate": {},"nameMoveOverlap": true,"inverse": false,"offset": 0,"splitNumber": 5,"minInterval": 0,"silent": false,"triggerEvent": false,"splitLine": {"show": true,"lineStyle": {"show": false}},"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0,"data": ["2006-12-16","2006-12-17","2006-12-18","2006-12-19","2006-12-20","2006-12-21","2006-12-22","2006-12-23","2006-12-24","2006-12-25","2006-12-26","2006-12-27","2006-12-28","2006-12-29","2006-12-30","2006-12-31","2007-01-01","2007-01-02","2007-01-03","2007-01-04","2007-01-05","2007-01-06","2007-01-07","2007-01-08","2007-01-09","2007-01-10","2007-01-11","2007-01-12","2007-01-13","2007-01-14","2007-01-15","2007-01-16","2007-01-17","2007-01-18","2007-01-19","2007-01-20","2007-01-21","2007-01-22","2007-01-23","2007-01-24","2007-01-25","2007-01-26","2007-01-27","2007-01-28","2007-01-29","2007-01-30","2007-01-31","2007-02-01","2007-02-02","2007-02-03","2007-02-04","2007-02-05","2007-02-06","2007-02-07","2007-02-08","2007-02-09","2007-02-10","2007-02-11","2007-02-12","2007-02-13","2007-02-14","2007-02-15","2007-02-16","2007-02-17","2007-02-18","2007-02-19","2007-02-20","2007-02-21","2007-02-22","2007-02-23","2007-02-24","2007-02-25","2007-02-26","2007-02-27","2007-02-28","2007-03-01","2007-03-02","2007-03-03","2007-03-04","2007-03-05","2007-03-06","2007-03-07","2007-03-08","2007-03-09","2007-03-10","2007-03-11","2007-03-12","2007-03-13","2007-03-14","2007-03-15","2007-03-16","2007-03-17","2007-03-18","2007-03-19","2007-03-20","2007-03-21","2007-03-22","2007-03-23","2007-03-24","2007-03-25","2007-03-26","2007-03-27","2007-03-28","2007-03-29","2007-03-30","2007-03-31","2007-04-01","2007-04-02","2007-04-03","2007-04-04","2007-04-05","2007-04-06","2007-04-07","2007-04-08","2007-04-09","2007-04-10","2007-04-11","2007-04-12","2007-04-13","2007-04-14","2007-04-15","2007-04-16","2007-04-17","2007-04-18","2007-04-19","2007-04-20","2007-04-21","2007-04-22","2007-04-23","2007-04-24","2007-04-25","2007-04-26","2007-04-27","2007-04-28","2007-04-29","2007-04-30","2007-05-01","2007-05-02","2007-05-03","2007-05-04","2007-05-05","2007-05-06","2007-05-07","2007-05-08","2007-05-09","2007-05-10","2007-05-11","2007-05-12","2007-05-13","2007-05-14","2007-05-15","2007-05-16","2007-05-17","2007-05-18","2007-05-19","2007-05-20","2007-05-21","2007-05-22","2007-05-23","2007-05-24","2007-05-25","2007-05-26","2007-05-27","2007-05-28","2007-05-29","2007-05-30","2007-05-31","2007-06-01","2007-06-02","2007-06-03","2007-06-04","2007-06-05","2007-06-06","2007-06-07","2007-06-08","2007-06-09","2007-06-10","2007-06-11","2007-06-12","2007-06-13","2007-06-14","2007-06-15","2007-06-16","2007-06-17","2007-06-18","2007-06-19","2007-06-20","2007-06-21","2007-06-22","2007-06-23","2007-06-24","2007-06-25","2007-06-26","2007-06-27","2007-06-28","2007-06-29","2007-06-30","2007-07-01","2007-07-02","2007-07-03","2007-07-04","2007-07-05","2007-07-06","2007-07-07","2007-07-08","2007-07-09","2007-07-10","2007-07-11","2007-07-12","2007-07-13","2007-07-14","2007-07-15","2007-07-16","2007-07-17","2007-07-18","2007-07-19","2007-07-20","2007-07-21","2007-07-22","2007-07-23","2007-07-24","2007-07-25","2007-07-26","2007-07-27","2007-07-28","2007-07-29","2007-07-30","2007-07-31","2007-08-01","2007-08-02","2007-08-03","2007-08-04","2007-08-05","2007-08-06","2007-08-07","2007-08-08","2007-08-09","2007-08-10","2007-08-11","2007-08-12","2007-08-13","2007-08-14","2007-08-15","2007-08-16","2007-08-17","2007-08-18","2007-08-19","2007-08-20","2007-08-21","2007-08-22","2007-08-23","2007-08-24","2007-08-25","2007-08-26","2007-08-27","2007-08-28","2007-08-29","2007-08-30","2007-08-31","2007-09-01","2007-09-02","2007-09-03","2007-09-04","2007-09-05","2007-09-06","2007-09-07","2007-09-08","2007-09-09","2007-09-10","2007-09-11","2007-09-12","2007-09-13","2007-09-14","2007-09-15","2007-09-16","2007-09-17","2007-09-18","2007-09-19","2007-09-20","2007-09-21","2007-09-22","2007-09-23","2007-09-24","2007-09-25","2007-09-26","2007-09-27","2007-09-28","2007-09-29","2007-09-30","2007-10-01","2007-10-02","2007-10-03","2007-10-04","2007-10-05","2007-10-06","2007-10-07","2007-10-08","2007-10-09","2007-10-10","2007-10-11","2007-10-12","2007-10-13","2007-10-14","2007-10-15","2007-10-16","2007-10-17","2007-10-18","2007-10-19","2007-10-20","2007-10-21","2007-10-22","2007-10-23","2007-10-24","2007-10-25","2007-10-26","2007-10-27","2007-10-28","2007-10-29","2007-10-30","2007-10-31","2007-11-01","2007-11-02","2007-11-03","2007-11-04","2007-11-05","2007-11-06","2007-11-07","2007-11-08","2007-11-09","2007-11-10","2007-11-11","2007-11-12","2007-11-13","2007-11-14","2007-11-15","2007-11-16","2007-11-17","2007-11-18","2007-11-19","2007-11-20","2007-11-21","2007-11-22","2007-11-23","2007-11-24","2007-11-25","2007-11-26","2007-11-27","2007-11-28","2007-11-29","2007-11-30","2007-12-01","2007-12-02","2007-12-03","2007-12-04","2007-12-05","2007-12-06","2007-12-07","2007-12-08","2007-12-09","2007-12-10","2007-12-11","2007-12-12","2007-12-13","2007-12-14","2007-12-15","2007-12-16","2007-12-17","2007-12-18","2007-12-19","2007-12-20","2007-12-21","2007-12-22","2007-12-23","2007-12-24","2007-12-25","2007-12-26","2007-12-27","2007-12-28","2007-12-29","2007-12-30","2007-12-31","2008-01-01","2008-01-02","2008-01-03","2008-01-04","2008-01-05","2008-01-06","2008-01-07","2008-01-08","2008-01-09","2008-01-10","2008-01-11","2008-01-12","2008-01-13","2008-01-14","2008-01-15","2008-01-16","2008-01-17","2008-01-18","2008-01-19","2008-01-20","2008-01-21","2008-01-22","2008-01-23","2008-01-24","2008-01-25","2008-01-26","2008-01-27","2008-01-28","2008-01-29","2008-01-30","2008-01-31","2008-02-01","2008-02-02","2008-02-03","2008-02-04","2008-02-05","2008-02-06","2008-02-07","2008-02-08","2008-02-09","2008-02-10","2008-02-11","2008-02-12","2008-02-13","2008-02-14","2008-02-15","2008-02-16","2008-02-17","2008-02-18","2008-02-19","2008-02-20","2008-02-21","2008-02-22","2008-02-23","2008-02-24","2008-02-25","2008-02-26","2008-02-27","2008-02-28","2008-02-29","2008-03-01","2008-03-02","2008-03-03","2008-03-04","2008-03-05","2008-03-06","2008-03-07","2008-03-08","2008-03-09","2008-03-10","2008-03-11","2008-03-12","2008-03-13","2008-03-14","2008-03-15","2008-03-16","2008-03-17","2008-03-18","2008-03-19","2008-03-20","2008-03-21","2008-03-22","2008-03-23","2008-03-24","2008-03-25","2008-03-26","2008-03-27","2008-03-28","2008-03-29","2008-03-30","2008-03-31","2008-04-01","2008-04-02","2008-04-03","2008-04-04","2008-04-05","2008-04-06","2008-04-07","2008-04-08","2008-04-09","2008-04-10","2008-04-11","2008-04-12","2008-04-13","2008-04-14","2008-04-15","2008-04-16","2008-04-17","2008-04-18","2008-04-19","2008-04-20","2008-04-21","2008-04-22","2008-04-23","2008-04-24","2008-04-25","2008-04-26","2008-04-27","2008-04-28","2008-04-29","2008-04-30","2008-05-01","2008-05-02","2008-05-03","2008-05-04","2008-05-05","2008-05-06","2008-05-07","2008-05-08","2008-05-09","2008-05-10","2008-05-11","2008-05-12","2008-05-13","2008-05-14","2008-05-15","2008-05-16","2008-05-17","2008-05-18","2008-05-19","2008-05-20","2008-05-21","2008-05-22","2008-05-23","2008-05-24","2008-05-25","2008-05-26","2008-05-27","2008-05-28","2008-05-29","2008-05-30","2008-05-31","2008-06-01","2008-06-02","2008-06-03","2008-06-04","2008-06-05","2008-06-06","2008-06-07","2008-06-08","2008-06-09","2008-06-10","2008-06-11","2008-06-12","2008-06-13","2008-06-14","2008-06-15","2008-06-16","2008-06-17","2008-06-18","2008-06-19","2008-06-20","2008-06-21","2008-06-22","2008-06-23","2008-06-24","2008-06-25","2008-06-26","2008-06-27","2008-06-28","2008-06-29","2008-06-30","2008-07-01","2008-07-02","2008-07-03","2008-07-04","2008-07-05","2008-07-06","2008-07-07","2008-07-08","2008-07-09","2008-07-10","2008-07-11","2008-07-12","2008-07-13","2008-07-14","2008-07-15","2008-07-16","2008-07-17","2008-07-18","2008-07-19","2008-07-20","2008-07-21","2008-07-22","2008-07-23","2008-07-24","2008-07-25","2008-07-26","2008-07-27","2008-07-28","2008-07-29","2008-07-30","2008-07-31","2008-08-01","2008-08-02","2008-08-03","2008-08-04","2008-08-05","2008-08-06","2008-08-07","2008-08-08","2008-08-09","2008-08-10","2008-08-11","2008-08-12","2008-08-13","2008-08-14","2008-08-15","2008-08-16","2008-08-17","2008-08-18","2008-08-19","2008-08-20","2008-08-21","2008-08-22","2008-08-23","2008-08-24","2008-08-25","2008-08-26","2008-08-27","2008-08-28","2008-08-29","2008-08-30","2008-08-31","2008-09-01","2008-09-02","2008-09-03","2008-09-04","2008-09-05","2008-09-06","2008-09-07","2008-09-08","2008-09-09","2008-09-10","2008-09-11","2008-09-12","2008-09-13","2008-09-14","2008-09-15","2008-09-16","2008-09-17","2008-09-18","2008-09-19","2008-09-20","2008-09-21","2008-09-22","2008-09-23","2008-09-24","2008-09-25","2008-09-26","2008-09-27","2008-09-28","2008-09-29","2008-09-30","2008-10-01","2008-10-02","2008-10-03","2008-10-04","2008-10-05","2008-10-06","2008-10-07","2008-10-08","2008-10-09","2008-10-10","2008-10-11","2008-10-12","2008-10-13","2008-10-14","2008-10-15","2008-10-16","2008-10-17","2008-10-18","2008-10-19","2008-10-20","2008-10-21","2008-10-22","2008-10-23","2008-10-24","2008-10-25","2008-10-26","2008-10-27","2008-10-28","2008-10-29","2008-10-30","2008-10-31","2008-11-01","2008-11-02","2008-11-03","2008-11-04","2008-11-05","2008-11-06","2008-11-07","2008-11-08","2008-11-09","2008-11-10","2008-11-11","2008-11-12","2008-11-13","2008-11-14","2008-11-15","2008-11-16","2008-11-17","2008-11-18","2008-11-19","2008-11-20","2008-11-21","2008-11-22","2008-11-23","2008-11-24","2008-11-25","2008-11-26","2008-11-27","2008-11-28","2008-11-29","2008-11-30","2008-12-01","2008-12-02","2008-12-03","2008-12-04","2008-12-05","2008-12-06","2008-12-07","2008-12-08","2008-12-09","2008-12-10","2008-12-11","2008-12-12","2008-12-13","2008-12-14","2008-12-15","2008-12-16","2008-12-17","2008-12-18","2008-12-19","2008-12-20","2008-12-21","2008-12-22","2008-12-23","2008-12-24","2008-12-25","2008-12-26","2008-12-27","2008-12-28","2008-12-29","2008-12-30","2008-12-31","2009-01-01","2009-01-02","2009-01-03","2009-01-04","2009-01-05","2009-01-06","2009-01-07","2009-01-08","2009-01-09","2009-01-10","2009-01-11","2009-01-12","2009-01-13","2009-01-14","2009-01-15","2009-01-16","2009-01-17","2009-01-18","2009-01-19","2009-01-20","2009-01-21","2009-01-22","2009-01-23","2009-01-24","2009-01-25","2009-01-26","2009-01-27","2009-01-28","2009-01-29","2009-01-30","2009-01-31","2009-02-01","2009-02-02","2009-02-03","2009-02-04","2009-02-05","2009-02-06","2009-02-07","2009-02-08","2009-02-09","2009-02-10","2009-02-11","2009-02-12","2009-02-13","2009-02-14","2009-02-15","2009-02-16","2009-02-17","2009-02-18","2009-02-19","2009-02-20","2009-02-21","2009-02-22","2009-02-23","2009-02-24","2009-02-25","2009-02-26","2009-02-27","2009-02-28","2009-03-01","2009-03-02","2009-03-03","2009-03-04","2009-03-05","2009-03-06","2009-03-07","2009-03-08","2009-03-09","2009-03-10","2009-03-11","2009-03-12","2009-03-13","2009-03-14","2009-03-15","2009-03-16","2009-03-17","2009-03-18","2009-03-19","2009-03-20","2009-03-21","2009-03-22","2009-03-23","2009-03-24","2009-03-25","2009-03-26","2009-03-27","2009-03-28","2009-03-29","2009-03-30","2009-03-31","2009-04-01","2009-04-02","2009-04-03","2009-04-04","2009-04-05","2009-04-06","2009-04-07","2009-04-08","2009-04-09","2009-04-10","2009-04-11","2009-04-12","2009-04-13","2009-04-14","2009-04-15","2009-04-16","2009-04-17","2009-04-18","2009-04-19","2009-04-20","2009-04-21","2009-04-22","2009-04-23","2009-04-24","2009-04-25","2009-04-26","2009-04-27","2009-04-28","2009-04-29","2009-04-30","2009-05-01","2009-05-02","2009-05-03","2009-05-04","2009-05-05","2009-05-06","2009-05-07","2009-05-08","2009-05-09","2009-05-10","2009-05-11","2009-05-12","2009-05-13","2009-05-14","2009-05-15","2009-05-16","2009-05-17","2009-05-18","2009-05-19","2009-05-20","2009-05-21","2009-05-22","2009-05-23","2009-05-24","2009-05-25","2009-05-26","2009-05-27","2009-05-28","2009-05-29","2009-05-30","2009-05-31","2009-06-01","2009-06-02","2009-06-03","2009-06-04","2009-06-05","2009-06-06","2009-06-07","2009-06-08","2009-06-09","2009-06-10","2009-06-11","2009-06-12","2009-06-13","2009-06-14","2009-06-15","2009-06-16","2009-06-17","2009-06-18","2009-06-19","2009-06-20","2009-06-21","2009-06-22","2009-06-23","2009-06-24","2009-06-25","2009-06-26","2009-06-27","2009-06-28","2009-06-29","2009-06-30","2009-07-01","2009-07-02","2009-07-03","2009-07-04","2009-07-05","2009-07-06","2009-07-07","2009-07-08","2009-07-09","2009-07-10","2009-07-11","2009-07-12","2009-07-13","2009-07-14","2009-07-15","2009-07-16","2009-07-17","2009-07-18","2009-07-19","2009-07-20","2009-07-21","2009-07-22","2009-07-23","2009-07-24","2009-07-25","2009-07-26","2009-07-27","2009-07-28","2009-07-29","2009-07-30","2009-07-31","2009-08-01","2009-08-02","2009-08-03","2009-08-04","2009-08-05","2009-08-06","2009-08-07","2009-08-08","2009-08-09","2009-08-10","2009-08-11","2009-08-12","2009-08-13","2009-08-14","2009-08-15","2009-08-16","2009-08-17","2009-08-18","2009-08-19","2009-08-20","2009-08-21","2009-08-22","2009-08-23","2009-08-24","2009-08-25","2009-08-26","2009-08-27","2009-08-28","2009-08-29","2009-08-30","2009-08-31","2009-09-01","2009-09-02","2009-09-03","2009-09-04","2009-09-05","2009-09-06","2009-09-07","2009-09-08","2009-09-09","2009-09-10","2009-09-11","2009-09-12","2009-09-13","2009-09-14","2009-09-15","2009-09-16","2009-09-17","2009-09-18","2009-09-19","2009-09-20","2009-09-21","2009-09-22","2009-09-23","2009-09-24","2009-09-25","2009-09-26","2009-09-27","2009-09-28","2009-09-29","2009-09-30","2009-10-01","2009-10-02","2009-10-03","2009-10-04","2009-10-05","2009-10-06","2009-10-07","2009-10-08","2009-10-09","2009-10-10","2009-10-11","2009-10-12","2009-10-13","2009-10-14","2009-10-15","2009-10-16","2009-10-17","2009-10-18","2009-10-19","2009-10-20","2009-10-21","2009-10-22","2009-10-23","2009-10-24","2009-10-25","2009-10-26","2009-10-27","2009-10-28","2009-10-29","2009-10-30","2009-10-31","2009-11-01","2009-11-02","2009-11-03","2009-11-04","2009-11-05","2009-11-06","2009-11-07","2009-11-08","2009-11-09","2009-11-10","2009-11-11","2009-11-12","2009-11-13","2009-11-14","2009-11-15","2009-11-16","2009-11-17","2009-11-18","2009-11-19","2009-11-20","2009-11-21","2009-11-22","2009-11-23","2009-11-24","2009-11-25","2009-11-26","2009-11-27","2009-11-28","2009-11-29","2009-11-30","2009-12-01","2009-12-02","2009-12-03","2009-12-04","2009-12-05","2009-12-06","2009-12-07","2009-12-08","2009-12-09","2009-12-10","2009-12-11","2009-12-12","2009-12-13","2009-12-14","2009-12-15","2009-12-16","2009-12-17","2009-12-18","2009-12-19","2009-12-20","2009-12-21","2009-12-22","2009-12-23","2009-12-24","2009-12-25","2009-12-26","2009-12-27","2009-12-28","2009-12-29","2009-12-30","2009-12-31","2010-01-01","2010-01-02","2010-01-03","2010-01-04","2010-01-05","2010-01-06","2010-01-07","2010-01-08","2010-01-09","2010-01-10","2010-01-11","2010-01-12","2010-01-13","2010-01-14","2010-01-15","2010-01-16","2010-01-17","2010-01-18","2010-01-19","2010-01-20","2010-01-21","2010-01-22","2010-01-23","2010-01-24","2010-01-25","2010-01-26","2010-01-27","2010-01-28","2010-01-29","2010-01-30","2010-01-31","2010-02-01","2010-02-02","2010-02-03","2010-02-04","2010-02-05","2010-02-06","2010-02-07","2010-02-08","2010-02-09","2010-02-10","2010-02-11","2010-02-12","2010-02-13","2010-02-14","2010-02-15","2010-02-16","2010-02-17","2010-02-18","2010-02-19","2010-02-20","2010-02-21","2010-02-22","2010-02-23","2010-02-24","2010-02-25","2010-02-26","2010-02-27","2010-02-28","2010-03-01","2010-03-02","2010-03-03","2010-03-04","2010-03-05","2010-03-06","2010-03-07","2010-03-08","2010-03-09","2010-03-10","2010-03-11","2010-03-12","2010-03-13","2010-03-14","2010-03-15","2010-03-16","2010-03-17","2010-03-18","2010-03-19","2010-03-20","2010-03-21","2010-03-22","2010-03-23","2010-03-24","2010-03-25","2010-03-26","2010-03-27","2010-03-28","2010-03-29","2010-03-30","2010-03-31","2010-04-01","2010-04-02","2010-04-03","2010-04-04","2010-04-05","2010-04-06","2010-04-07","2010-04-08","2010-04-09","2010-04-10","2010-04-11","2010-04-12","2010-04-13","2010-04-14","2010-04-15","2010-04-16","2010-04-17","2010-04-18","2010-04-19","2010-04-20","2010-04-21","2010-04-22","2010-04-23","2010-04-24","2010-04-25","2010-04-26","2010-04-27","2010-04-28","2010-04-29","2010-04-30","2010-05-01","2010-05-02","2010-05-03","2010-05-04","2010-05-05","2010-05-06","2010-05-07","2010-05-08","2010-05-09","2010-05-10","2010-05-11","2010-05-12","2010-05-13","2010-05-14","2010-05-15","2010-05-16","2010-05-17","2010-05-18","2010-05-19","2010-05-20","2010-05-21","2010-05-22","2010-05-23","2010-05-24","2010-05-25","2010-05-26","2010-05-27","2010-05-28","2010-05-29","2010-05-30","2010-05-31","2010-06-01","2010-06-02","2010-06-03","2010-06-04","2010-06-05","2010-06-06","2010-06-07","2010-06-08","2010-06-09","2010-06-10","2010-06-11","2010-06-12","2010-06-13","2010-06-14","2010-06-15","2010-06-16","2010-06-17","2010-06-18","2010-06-19","2010-06-20","2010-06-21","2010-06-22","2010-06-23","2010-06-24","2010-06-25","2010-06-26","2010-06-27","2010-06-28","2010-06-29","2010-06-30","2010-07-01","2010-07-02","2010-07-03","2010-07-04","2010-07-05","2010-07-06","2010-07-07","2010-07-08","2010-07-09","2010-07-10","2010-07-11","2010-07-12","2010-07-13","2010-07-14","2010-07-15","2010-07-16","2010-07-17","2010-07-18","2010-07-19","2010-07-20","2010-07-21","2010-07-22","2010-07-23","2010-07-24","2010-07-25","2010-07-26","2010-07-27","2010-07-28","2010-07-29","2010-07-30","2010-07-31","2010-08-01","2010-08-02","2010-08-03","2010-08-04","2010-08-05","2010-08-06","2010-08-07","2010-08-08","2010-08-09","2010-08-10","2010-08-11","2010-08-12","2010-08-13","2010-08-14","2010-08-15","2010-08-16","2010-08-17","2010-08-18","2010-08-19","2010-08-20","2010-08-21","2010-08-22","2010-08-23","2010-08-24","2010-08-25","2010-08-26","2010-08-27","2010-08-28","2010-08-29","2010-08-30","2010-08-31","2010-09-01","2010-09-02","2010-09-03","2010-09-04","2010-09-05","2010-09-06","2010-09-07","2010-09-08","2010-09-09","2010-09-10","2010-09-11","2010-09-12","2010-09-13","2010-09-14","2010-09-15","2010-09-16","2010-09-17","2010-09-18","2010-09-19","2010-09-20","2010-09-21","2010-09-22","2010-09-23","2010-09-24","2010-09-25","2010-09-26","2010-09-27","2010-09-28","2010-09-29","2010-09-30","2010-10-01","2010-10-02","2010-10-03","2010-10-04","2010-10-05","2010-10-06","2010-10-07","2010-10-08","2010-10-09","2010-10-10","2010-10-11","2010-10-12","2010-10-13","2010-10-14","2010-10-15","2010-10-16","2010-10-17","2010-10-18","2010-10-19","2010-10-20","2010-10-21","2010-10-22","2010-10-23","2010-10-24","2010-10-25","2010-10-26","2010-10-27","2010-10-28","2010-10-29","2010-10-30","2010-10-31","2010-11-01","2010-11-02","2010-11-03","2010-11-04","2010-11-05","2010-11-06","2010-11-07","2010-11-08","2010-11-09","2010-11-10","2010-11-11","2010-11-12","2010-11-13","2010-11-14","2010-11-15","2010-11-16","2010-11-17","2010-11-18","2010-11-19","2010-11-20","2010-11-21","2010-11-22","2010-11-23","2010-11-24","2010-11-25","2010-11-26"]}],"yAxis": [{"name": "kWh","show": true,"scale": false,"nameLocation": "end","nameGap": 15,"nameTruncate": {},"nameMoveOverlap": true,"inverse": false,"offset": 0,"splitNumber": 5,"minInterval": 0,"silent": false,"triggerEvent": false,"splitLine": {"show": true,"lineStyle": {"show": false}},"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0}],"title": [{"show": true,"target": "blank","subtarget": "blank","padding": 5,"itemGap": 10,"textAlign": "auto","textVerticalAlign": "auto","triggerEvent": false}],"dataZoom": [{"show": true,"type": "slider","showDetail": true,"showDataShadow": true,"realtime": true,"start": 0,"end": 100,"orient": "horizontal","zoomLock": false,"filterMode": "filter"}],"grid": {"show": false,"zlevel": 0,"z": 2,"left": "50px","top": "70px","right": "20px","containLabel": false,"backgroundColor": "transparent","borderColor": "#ccc","borderWidth": 1,"shadowOffsetX": 0,"shadowOffsetY": 0}};
+                chart_623a1aee00ed413b94cf2417114a4654.setOption(option_623a1aee00ed413b94cf2417114a4654);});
+    </script>
+</div>
+</div>
+</section>
+<section id="exponential-smoothing-is-a-kalman-filter" class="level2">
+<h2 class="anchored" data-anchor-id="exponential-smoothing-is-a-kalman-filter">2. Exponential smoothing is a Kalman filter</h2>
+<p>Watch the gain. It starts near 1 (the first observations are all the filter has) and settles to a constant within a few weeks. Once it is constant, the update step reads</p>
+<p><span class="math display">\[\ell_t = \ell_{t-1} + K\,(y_t - \ell_{t-1})\]</span></p>
+<p><span class="math display">\[\ell_t = K\,y_t + (1-K)\,\ell_{t-1},\]</span></p>
+<p>which is <strong>simple exponential smoothing with <span class="math inline">\(\alpha = K\)</span></strong>. The steady-state gain has a closed form in the noise ratio <span class="math inline">\(q = Q/R\)</span>:</p>
+<p><span class="math display">\[K_\infty = \frac{-q + \sqrt{q^2 + 4q}}{2}\]</span></p>
+<p>So the smoothing parameter of SES is not an arbitrary knob: it encodes a belief about how much the level moves compared with how noisy the readings are. Fitting <span class="math inline">\(\alpha\)</span> is estimating that ratio.</p>
+<hr>
+<div id="0e591385" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>q <span class="op">=</span> Q <span class="op">/</span> R</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>k_inf <span class="op">=</span> (<span class="op">-</span>q <span class="op">+</span> np.sqrt(q <span class="op">*</span> q <span class="op">+</span> <span class="dv">4</span> <span class="op">*</span> q)) <span class="op">/</span> <span class="dv">2</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>ses_level, ses_levels <span class="op">=</span> levels[<span class="dv">59</span>], []</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> z <span class="kw">in</span> x[<span class="dv">60</span>:]:                    <span class="co"># simple exponential smoothing, started from the filter's day-59 level</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    ses_level <span class="op">=</span> k_inf <span class="op">*</span> z <span class="op">+</span> (<span class="dv">1</span> <span class="op">-</span> k_inf) <span class="op">*</span> ses_level</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    ses_levels.append(ses_level)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>gap <span class="op">=</span> np.<span class="bu">max</span>(np.<span class="bu">abs</span>(np.array(ses_levels) <span class="op">-</span> levels[<span class="dv">60</span>:]))</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"steady-state gain from the formula: </span><span class="sc">{</span>k_inf<span class="sc">:.5f}</span><span class="ss">; from the filter after 60 days: </span><span class="sc">{</span>gains[<span class="dv">60</span>]<span class="sc">:.5f}</span><span class="ss">"</span>)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"largest difference between SES (alpha = K) and the Kalman level after day 60: </span><span class="sc">{</span>gap<span class="sc">:.2e}</span><span class="ss"> kWh"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>steady-state gain from the formula: 0.13177; from the filter after 60 days: 0.13177
+largest difference between SES (alpha = K) and the Kalman level after day 60: 5.68e-08 kWh</code></pre>
+</div>
+</div>
+<p>The two agree to rounding error. Every exponential smoothing method is the steady state of a Kalman filter for some state space model; Holt-Winters is the filter for a level, a trend and a seasonal state. The Kalman form adds three things the plain recursion lacks: a likelihood (so the noise ratio can be estimated), prediction intervals, and a principled way to handle <strong>missing observations</strong>: skip the update step and let the uncertainty grow.</p>
+<hr>
+</section>
+<section id="missing-data-for-free" class="level2">
+<h2 class="anchored" data-anchor-id="missing-data-for-free">3. Missing data for free</h2>
+<p>A gap is just several predict steps without an update. The filter’s uncertainty widens across the gap and the estimate carries on; no imputation is needed. On the real 121-hour gap in the raw data, a structural model with a daily season, fitted around the gap:</p>
+<hr>
+<div id="ec2442f9" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>raw <span class="op">=</span> load_household(clean<span class="op">=</span><span class="va">False</span>)[<span class="st">"kwh"</span>]</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>gaps <span class="op">=</span> raw.isna()</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>run <span class="op">=</span> (gaps <span class="op">!=</span> gaps.shift()).cumsum()</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>longest <span class="op">=</span> gaps.groupby(run).<span class="bu">sum</span>().idxmax()</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>gap_idx <span class="op">=</span> raw.index[(run <span class="op">==</span> longest) <span class="op">&amp;</span> gaps]</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>around <span class="op">=</span> raw[gap_idx[<span class="dv">0</span>] <span class="op">-</span> pd.Timedelta(<span class="st">"7D"</span>):gap_idx[<span class="op">-</span><span class="dv">1</span>] <span class="op">+</span> pd.Timedelta(<span class="st">"2D"</span>)]</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>uc_gap <span class="op">=</span> UnobservedComponents(around.to_numpy(), level<span class="op">=</span><span class="st">"local level"</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>                              freq_seasonal<span class="op">=</span>[{<span class="st">"period"</span>: <span class="dv">24</span>, <span class="st">"harmonics"</span>: <span class="dv">4</span>}]).fit(disp<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>smoothed <span class="op">=</span> uc_gap.smoothed_state[<span class="dv">0</span>] <span class="op">+</span> uc_gap.smoothed_state[<span class="dv">1</span>]</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>show(line_chart(around.index.strftime(<span class="st">"</span><span class="sc">%d</span><span class="st"> %b %H:00"</span>), {<span class="st">"observed"</span>: around.to_numpy(), <span class="st">"Kalman smoother"</span>: smoothed},</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>                y_name<span class="op">=</span><span class="st">"kWh"</span>, height<span class="op">=</span><span class="st">"320px"</span>))</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"gap of </span><span class="sc">{</span><span class="bu">len</span>(gap_idx)<span class="sc">}</span><span class="ss"> hours from </span><span class="sc">{</span>gap_idx[<span class="dv">0</span>]<span class="sc">:</span><span class="op">%</span>Y<span class="op">-%</span>m<span class="op">-%</span>d <span class="op">%</span>H<span class="sc">:00}</span><span class="ss">, filled by the smoother without any imputation step"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>gap of 121 hours from 2010-08-17 21:00, filled by the smoother without any imputation step</code></pre>
+</div>
+</div>
+<p>The <strong>smoother</strong> (a backward pass after the forward filter) uses observations on both sides of the gap, so it reconnects the level smoothly and keeps the daily cycle running through it. That is the model-based gap filling the <a href="../01_Foundations/data_preparation.html">Data Preparation</a> page set aside.</p>
+<hr>
+</section>
+<section id="a-structural-model-on-the-backtest" class="level2">
+<h2 class="anchored" data-anchor-id="a-structural-model-on-the-backtest">4. A structural model on the backtest</h2>
+<p>statsmodels’ <code>UnobservedComponents</code> builds the state space model from named parts, the “structural” approach of Harvey (1989):</p>
+<ul>
+<li>a <strong>local level</strong>;</li>
+<li>a <strong>daily</strong> season and a <strong>weekly</strong> season, each as a few Fourier harmonics (6 for the day, 3 for the week), which keeps the state small;</li>
+<li>an <strong>AR(1)</strong> term for short-lived departures, such as an evening that runs high.</li>
+</ul>
+<p>It is refitted by maximum likelihood on the last three weeks at each origin.</p>
+<hr>
+<div id="30ae2fa0" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> structural(history, horizon):</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> UnobservedComponents(history.iloc[<span class="op">-</span><span class="dv">24</span> <span class="op">*</span> <span class="dv">21</span>:].to_numpy(), level<span class="op">=</span><span class="st">"local level"</span>, autoregressive<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                                 freq_seasonal<span class="op">=</span>[{<span class="st">"period"</span>: <span class="dv">24</span>, <span class="st">"harmonics"</span>: <span class="dv">6</span>}, {<span class="st">"period"</span>: <span class="dv">168</span>, <span class="st">"harmonics"</span>: <span class="dv">3</span>}])</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> model.fit(disp<span class="op">=</span><span class="va">False</span>).forecast(horizon)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>uc_score <span class="op">=</span> score(backtest(y, structural), y, exclude<span class="op">=</span>FILLED)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>record(<span class="st">"Structural model (level + daily + weekly + AR1)"</span>, <span class="st">"classical"</span>, uc_score, notebook<span class="op">=</span>NB)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"structural model: MASE </span><span class="sc">{</span>uc_score[<span class="st">'mase'</span>]<span class="sc">:.3f}</span><span class="ss">, skill </span><span class="sc">{</span>uc_score[<span class="st">'skill'</span>]<span class="sc">:+.1%}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>structural model: MASE 0.733, skill +9.4%</code></pre>
+</div>
+</div>
+<p>The structural model beats seasonal naive and the default ETS fit, and stays below <a href="../03_Classical/arima.html">SARIMA</a>. Its seasons are smooth (a few harmonics), which loses the sharp edges of the morning and evening peaks that SARIMA’s lag-24 term copies directly. Its strengths are elsewhere: every component is interpretable, it handles gaps natively, and it gives a likelihood for comparing designs.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model family</th>
+<th>State space view</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Simple exponential smoothing</td>
+<td>steady-state Kalman filter of a local level</td>
+</tr>
+<tr class="even">
+<td>Holt-Winters, ETS</td>
+<td>level, trend and seasonal states, single error source</td>
+</tr>
+<tr class="odd">
+<td>ARIMA</td>
+<td>lagged values and errors as the state vector</td>
+</tr>
+<tr class="even">
+<td>Structural (this page)</td>
+<td>named components, each with its own noise</td>
+</tr>
+</tbody>
+</table>
+<hr>
+
+
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const toggle = window.document.createElement('button');
+      toggle.type = "button";
+      toggle.setAttribute("role", "switch");
+      toggle.setAttribute("aria-checked", "false");
+      toggle.classList.add('top-right');
+      toggle.classList.add('quarto-color-scheme-toggle');
+      toggle.setAttribute("aria-label", "Toggle dark mode");
+      toggle.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      toggle.appendChild(i);
+      // Put the toggle in a landmark of its own, so that landmark navigation
+      // can reach it.
+      //
+      // The container is always a fresh direct child of body, and the toggle is
+      // never moved into page furniture that the theme or the author controls.
+      // The toggle is positioned against the page, so any ancestor that
+      // establishes a containing block captures it: a positioned element or a
+      // grid for position: absolute, and transform, filter, will-change or
+      // contain for position: fixed. A direct child of body has none of these
+      // to inherit, and the shift when one appears is silent and visual.
+      //
+      // ARIA says a document should have at most one banner, and axe reports a
+      // duplicate whether or not the banners carry distinct labels. So use a
+      // header when the page has no banner yet, and a named region otherwise.
+      //
+      // A header is a banner wherever it sits, unless it is inside sectioning
+      // content, so this cannot just look at the children of body: a custom
+      // page layout wraps the title block header in a plain div. An explicit
+      // role="banner" always counts.
+      const sectioning = 'article, aside, main, nav, section, [role="article"], [role="complementary"], [role="main"], [role="navigation"], [role="region"]';
+      const hasBanner = Array.from(
+        window.document.querySelectorAll('header:not([role]), [role="banner"]')
+      ).some(function(el) {
+        return el.hasAttribute("role") || el.closest(sectioning) === null;
+      });
+      const container = window.document.createElement(hasBanner ? "div" : "header");
+      if (hasBanner) {
+        container.setAttribute("role", "region");
+        container.setAttribute("aria-label", "Toggle dark mode");
+      }
+      container.classList.add('quarto-color-scheme-toggle-container');
+      container.appendChild(toggle);
+      window.document.body.appendChild(container);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/bthek1\.github\.io\/ML_Timeseries");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+          if (!link.classList.contains('no-external-icon')) {
+          }
+        }
+      }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
+          if (lineIds.length > 0) {
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            placeBand(gutterDiv, el, lastEl);
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+<script src="https://utteranc.es/client.js" repo="quarto-dev/quarto-web" issue-term="pathname" theme="github-light" crossorigin="anonymous" async="">
+</script>
+<nav class="page-navigation" aria-label="Page">
+  <div class="nav-page nav-page-previous">
+      <a href="../03_Classical/theta_intermittent.html" class="pagination-link" aria-label="Theta and Intermittent Demand">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Theta and Intermittent Demand</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../03_Classical/var_granger.html" class="pagination-link" aria-label="VAR and Granger Causality">
+        <span class="nav-page-text">VAR and Granger Causality</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link active" href="../index.html" aria-current="page">
+<p>Trademark</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/bthek1/ML_Timeseries/issues">
+<p>FAQ</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://bthek1.github.io/bthek1_blog/index.html">
+<p>License</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="../index.html">
+<p>Trademark</p>
+</a>
+  </li>  
+</ul>
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.dev/bthek1/ML_Timeseries/blob/main/03_Classical/05_State_Space_Kalman.ipynb" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/bthek1/ML_Timeseries/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/bthek1/ML_Timeseries">
+      <i class="bi bi-github" role="img" aria-label="Github">
+</i> 
+    </a>
+  </li>  
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/benedict-thekkel/">
+      <i class="bi bi-linkedin" role="img" aria-label="Linkedin">
+</i> 
+    </a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

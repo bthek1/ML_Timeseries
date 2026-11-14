@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.11.9">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Benedict Thekkel">
+<meta name="description" content="Forecasting a range instead of a number: quantiles, the pinball loss, CRPS, and the two checks every interval must pass (does it cover what it claims, and is it no wider than needed).">
+
+<title>Probabilistic Forecasting – ML_Timeseries</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../07_Probabilistic/conformal_prediction.html" rel="next">
+<link href="../06_Foundation_Models/small_models_on_cpu.html" rel="prev">
+<link href="../favi.svg" rel="icon" type="image/svg+xml">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-447e42e69aaa9833c0ba1b986f430b20.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-8e10d5f78f84c68f34904ffd70ceca7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-e0bec6286bfda571ec17f309cbd30a0a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-8e10d5f78f84c68f34904ffd70ceca7c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<meta property="og:title" content="Probabilistic Forecasting – ML_Timeseries">
+<meta property="og:description" content="Forecasting a range instead of a number: quantiles, the pinball loss, CRPS, and the two checks every interval must pass (does it cover what it claims, and is it no wider than needed).">
+<meta property="og:image" content="https://bthek1.github.io/ML_Timeseries/Logo.svg">
+<meta property="og:site_name" content="ML_Timeseries">
+<meta name="twitter:title" content="Probabilistic Forecasting – ML_Timeseries">
+<meta name="twitter:description" content="Forecasting a range instead of a number: quantiles, the pinball loss, CRPS, and the two checks every interval must pass (does it cover what it claims, and is it no wider than needed).">
+<meta name="twitter:image" content="https://bthek1.github.io/ML_Timeseries/Logo.svg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          toggle.setAttribute("aria-checked", alternate ? "true" : "false");
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+    }
+    // Hack to workaround the fact that safari doesn't
+    // properly recolor the scrollbar when toggling (#1455).
+    // Not run on load: stylesheets are set before first paint there, and
+    // scrolling would undo the scroll to a URL fragment (#14973).
+    // The one pixel nudge keeps the reader where they were.
+    const refreshSafariScrollbar = () => {
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        const scrollY = window.scrollY;
+        window.scrollTo(0, scrollY > 0 ? scrollY - 1 : 1);
+        setTimeout(() => {
+          window.scrollTo(0, scrollY);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const queryPrefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const darkModeDefault = queryPrefersDark.matches;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      refreshSafariScrollbar();
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    queryPrefersDark.addEventListener("change", e => {
+      if(window.localStorage.getItem("quarto-color-scheme") !== null)
+        return;
+      const alternate = e.matches
+      toggleColorMode(alternate);
+      refreshSafariScrollbar();
+      localAlternateSentinel = e.matches ? 'alternate' : 'default'; // this is used alongside local storage!
+      toggleGiscusIfUsed(alternate, darkModeDefault);
+    });
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark" aria-label="Site">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../Logo.svg" alt="Benedict Thekkel" class="navbar-logo light-content">
+    <img src="../Logo.svg" alt="Benedict Thekkel" class="navbar-logo dark-content">
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-docs" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Docs</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-docs">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/bthek1_blog/">
+ <span class="dropdown-text">Blog</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Ideas/">
+ <span class="dropdown-text">Ideas</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Other/">
+ <span class="dropdown-text">Other</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-business" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Business</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-business">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Business_docs/">
+ <span class="dropdown-text">Business Docs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Finances/">
+ <span class="dropdown-text">Finances</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-web" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Web</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-web">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Web_development/">
+ <span class="dropdown-text">Web Development</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Front_End/">
+ <span class="dropdown-text">Front End</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Back_End/">
+ <span class="dropdown-text">Back End</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/IaaS_docs/">
+ <span class="dropdown-text">IaaS Docs</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-machine-learning" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Machine Learning</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-machine-learning">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ML_methods/">
+ <span class="dropdown-text">ML Methods</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ML_Timeseries/">
+ <span class="dropdown-text">ML Timeseries</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-deep-learning" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Deep Learning</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-deep-learning">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/FastAI_course/">
+ <span class="dropdown-text">FastAI course</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/DL_methods/">
+ <span class="dropdown-text">DL Methods</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/DL_tasks/">
+ <span class="dropdown-text">DL Tasks</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-tools" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Tools</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-tools">    
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Software_Tools/">
+ <span class="dropdown-text">Software Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Hardware_Tools/">
+ <span class="dropdown-text">Hardware Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Electrical_Docs/">
+ <span class="dropdown-text">Electrical Docs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/Python_Libs/">
+ <span class="dropdown-text">Python Libs</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/nbdevAuto/">
+ <span class="dropdown-text">Nbdev Automation</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="https://bthek1.github.io/ROS2_docs/">
+ <span class="dropdown-text">ROS2 Docs</span></a>
+  </li>  
+    </ul>
+  </li>
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools tools-wide">
+    <div class="dropdown">
+      <a href="" title="" id="quarto-navigation-tool-dropdown-0" class="quarto-navigation-tool dropdown-toggle px-1" data-bs-toggle="dropdown" aria-expanded="false" role="link" aria-label="Github"><i class="bi bi-github"></i></a>
+      <ul class="dropdown-menu" aria-labelledby="quarto-navigation-tool-dropdown-0">
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries">
+              <i class="bi bi-code-slash pe-1"></i>
+            Source Code
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues/new">
+              <i class="bi bi-bug pe-1"></i>
+            Report a Bug
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues/new">
+              <i class="bi bi-chat-right-text pe-1"></i>
+            Ask a Question
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item quarto-navbar-tools-item" href="https://github.com/bthek1/ML_Timeseries/issues">
+              <i class="bi bi-list-ul pe-1"></i>
+            All Issues
+            </a>
+          </li>
+      </ul>
+    </div>
+    <a href="https://www.linkedin.com/in/benedict-thekkel/" title="" class="quarto-navigation-tool px-1" aria-label="Linkedin"><i class="bi bi-linkedin"></i></a>
+  <button type="button" role="switch" aria-checked="false" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode" aria-label="Toggle dark mode"><i class="bi"></i></button>
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+            <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" aria-label="Toolbar">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../07_Probabilistic/probabilistic_forecasting.html">07 Probabilistic</a></li><li class="breadcrumb-item"><a href="../07_Probabilistic/probabilistic_forecasting.html">Probabilistic Forecasting</a></li></ol></nav>
+        <a class="flex-grow-1" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto" aria-label="Section">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimeSeries ML</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Phisaver Project</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-controls="quarto-sidebar-section-1" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-1-label">01 Foundations</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-1" aria-labelledby="quarto-sidebar-section-1-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/datasets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datasets</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/decomposition_stationarity.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Decomposition and Stationarity</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/data_preparation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data Preparation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/feature_engineering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Feature Engineering</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01_Foundations/fft_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">FFT analysis</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-controls="quarto-sidebar-section-2" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-2-label">02 Evaluation</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-2" aria-labelledby="quarto-sidebar-section-2-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/backtesting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Backtesting and Leakage</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/forecast_metrics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forecast Metrics</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Benchmarks</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02_Evaluation/scoreboard.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scoreboard</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-controls="quarto-sidebar-section-3" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-3-label">03 Classical</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-3" aria-labelledby="quarto-sidebar-section-3-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/baselines.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Baselines</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/ets.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Exponential Smoothing (ETS)</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/arima.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ARIMA</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/theta_intermittent.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Theta and Intermittent Demand</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/state_space_kalman.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">State Space Models and the Kalman Filter</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/var_granger.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VAR and Granger Causality</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/garch.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">GARCH: Forecasting the Variance</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03_Classical/prophet.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hourly Time Series Forecasting using Facebook’s Prophet</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-controls="quarto-sidebar-section-4" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-4-label">04 Machine Learning</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-4" aria-labelledby="quarto-sidebar-section-4-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/forecasting_as_regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forecasting as Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/multistep_strategies.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multi-step Strategies</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/global_vs_local.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Global vs Local Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/xgboost.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XGBoost</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../04_Machine_Learning/xgboost_energy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">XGBoost: Forecast Energy Consumption</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-controls="quarto-sidebar-section-5" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-5-label">05 Deep Learning</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-5" aria-labelledby="quarto-sidebar-section-5-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/dl_data_pipeline.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Deep Learning Data Pipeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/rnn_lstm_deepar.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">RNN, LSTM and DeepAR</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/mlp_family.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The MLP Family: N-BEATS, N-HiTS, TiDE and DLinear</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/transformers.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transformers for Time Series: PatchTST, iTransformer and TFT</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../05_Deep_Learning/nbeats_from_scratch.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">N-BEATS from Scratch</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-controls="quarto-sidebar-section-6" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-6-label">06 Foundation Models</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-6" aria-labelledby="quarto-sidebar-section-6-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/chronos2_zero_shot.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Chronos-2 Zero-Shot</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/foundation_model_comparison.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Foundation Model Comparison</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/fine_tuning.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Fine-Tuning Chronos-2</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../06_Foundation_Models/small_models_on_cpu.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Small Models on CPU</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-controls="quarto-sidebar-section-7" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-7-label">07 Probabilistic</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-7" aria-labelledby="quarto-sidebar-section-7-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../07_Probabilistic/probabilistic_forecasting.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Probabilistic Forecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../07_Probabilistic/conformal_prediction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Conformal Prediction</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-controls="quarto-sidebar-section-8" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-8-label">08 Other Tasks</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-8" aria-labelledby="quarto-sidebar-section-8-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/anomaly_detection.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Anomaly Detection</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/change_point_detection.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Change-Point Detection</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/matrix_profile.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">The Matrix Profile: Motifs and Discords</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../08_Other_Tasks/classification_minirocket.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Time Series Classification with MiniRocket</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-controls="quarto-sidebar-section-9" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-9-label">09 Many Series</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-9" aria-labelledby="quarto-sidebar-section-9-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../09_Many_Series/hierarchical_reconciliation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hierarchical Reconciliation</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-10" aria-controls="quarto-sidebar-section-10" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-10-label">10 Production</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-10" aria-labelledby="quarto-sidebar-section-10-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/explainability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Explainability</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/drift_and_retraining.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Drift and Retraining</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../10_Production/onnx_export.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ONNX Export</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-11" aria-controls="quarto-sidebar-section-11" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-11-label">Libraries</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-11" aria-labelledby="quarto-sidebar-section-11-label" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/darts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Darts</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/darts_hyperparameter_optimization.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Darts - Hyper-parameters Optimization for Electricity Load Forecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-12" aria-controls="quarto-sidebar-section-12" aria-expanded="false">
+ <span class="menu-text" id="quarto-sidebar-section-12-label">Nixtla</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      </div>
+      <ul id="quarto-sidebar-section-12" aria-labelledby="quarto-sidebar-section-12-label" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_statsforecasting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - StatsForecasting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_mlforecast.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - ML Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neuralforecast.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Neural Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_exogenous_variables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Exogenous Variables</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neural_save_and_load.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Neural Save and Load Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_neural_advanced.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nixtla - Neural Advanced Forecast</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../Libraries/Nixtla/nixtla_all_methods.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Statistical, Machine Learning and Neural Forecasting methods</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" aria-labelledby="toc-title" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#a-number-is-not-enough" id="toc-a-number-is-not-enough" class="nav-link active" data-scroll-target="#a-number-is-not-enough">A number is not enough</a></li>
+  <li><a href="#the-pinball-loss-and-crps" id="toc-the-pinball-loss-and-crps" class="nav-link" data-scroll-target="#the-pinball-loss-and-crps">1. The pinball loss and CRPS</a></li>
+  <li><a href="#two-ways-to-get-quantiles" id="toc-two-ways-to-get-quantiles" class="nav-link" data-scroll-target="#two-ways-to-get-quantiles">2. Two ways to get quantiles</a></li>
+  <li><a href="#what-a-calibrated-band-looks-like" id="toc-what-a-calibrated-band-looks-like" class="nav-link" data-scroll-target="#what-a-calibrated-band-looks-like">3. What a calibrated band looks like</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.dev/bthek1/ML_Timeseries/blob/main/07_Probabilistic/01_Probabilistic_Forecasting.ipynb" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/bthek1/ML_Timeseries/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content" tabindex="-1">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../07_Probabilistic/probabilistic_forecasting.html">07 Probabilistic</a></li><li class="breadcrumb-item"><a href="../07_Probabilistic/probabilistic_forecasting.html">Probabilistic Forecasting</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Probabilistic Forecasting</h1>
+</div>
+
+<div>
+  <div class="description">
+    Forecasting a range instead of a number: quantiles, the pinball loss, CRPS, and the two checks every interval must pass (does it cover what it claims, and is it no wider than needed).
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Benedict Thekkel </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<section id="a-number-is-not-enough" class="level2">
+<h2 class="anchored" data-anchor-id="a-number-is-not-enough">A number is not enough</h2>
+<p>A point forecast says “1.2 kWh at 19:00”. A decision usually needs more: how high could it plausibly go (to size a battery, or to warn before a peak), how low (to schedule a flexible load). A <strong>probabilistic forecast</strong> answers with a distribution, most often summarised by <strong>quantiles</strong>: the 90% quantile is the value the outcome stays below 90% of the time. Two quantiles make an interval: the 5% and 95% quantiles bound a <strong>90% prediction interval</strong>.</p>
+<p>Three questions judge such a forecast:</p>
+<ol type="1">
+<li><strong>Calibration</strong>: does the 90% interval contain the outcome about 90% of the time? Too often means too wide; too rarely means overconfident.</li>
+<li><strong>Sharpness</strong>: among calibrated forecasts, narrower is better. An interval from 0 to 10 kWh always covers and says nothing.</li>
+<li><strong>A single score</strong> that rewards both: the pinball loss and CRPS.</li>
+</ol>
+<hr>
+</section>
+<section id="the-pinball-loss-and-crps" class="level2">
+<h2 class="anchored" data-anchor-id="the-pinball-loss-and-crps">1. The pinball loss and CRPS</h2>
+<p>The <strong>pinball loss</strong> of a quantile forecast <span class="math inline">\(q_\tau\)</span> at level <span class="math inline">\(\tau\)</span> is</p>
+<p><span class="math display">\[L_\tau(y, q) = \begin{cases} \tau\,(y - q) &amp; y \ge q \\ (1 - \tau)\,(q - y) &amp; y &lt; q \end{cases}\]</span></p>
+<p>For the 90% quantile, an outcome above it costs 0.9 per unit of miss; one below costs only 0.1. Minimising it in expectation gives exactly the true 90% quantile, which is why quantile regression trains on it. At <span class="math inline">\(\tau = 0.5\)</span> it is half the absolute error.</p>
+<p>The <strong>CRPS</strong> (continuous ranked probability score) is the pinball loss integrated over every level from 0 to 1, times two. It reduces to the absolute error for a point forecast, so it compares probabilistic and point forecasts on the same scale. With a finite set of quantiles, the average pinball loss over those levels approximates it; GIFT-Eval’s CRPS is computed this way.</p>
+<hr>
+<div id="d7cf0b2e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:49.614164+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:49.623940+00:00&quot;,&quot;total&quot;:0.009780915999996864}}" data-execution_count="3">
+<pre><code>/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/fastcore/docments.py:499: UserWarning: docments unavailable for summarise: ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+  warnings.warn(f'docments unavailable for {self.nm}: {type(e).__name__}: {e}')</code></pre>
+<hr>
+<p><a href="https://github.com/bthek1/ML_Timeseries/blob/main/ML_Timeseries/probabilistic.py#L52" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="summarise" class="level3">
+<h3 class="anchored" data-anchor-id="summarise">summarise</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>summarise(qb: pandas.core.frame.DataFrame, levels<span class="op">=</span>array([<span class="fl">0.05</span>, <span class="fl">0.1</span> , <span class="fl">0.25</span>, <span class="fl">0.5</span> , <span class="fl">0.75</span>, <span class="fl">0.9</span> , <span class="fl">0.95</span>])) <span class="op">-&gt;</span> <span class="bu">dict</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><em>CRPS, median MAE, and coverage and width of the 80% and 90% intervals.</em></p>
+</section>
+</div>
+<div id="79e9fa55" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:49.624097+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:49.630168+00:00&quot;,&quot;total&quot;:0.00607698800000378}}" data-execution_count="4">
+<pre><code>/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/fastcore/docments.py:499: UserWarning: docments unavailable for quantile_backtest: ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+  warnings.warn(f'docments unavailable for {self.nm}: {type(e).__name__}: {e}')</code></pre>
+<hr>
+<p><a href="https://github.com/bthek1/ML_Timeseries/blob/main/ML_Timeseries/probabilistic.py#L36" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="quantile_backtest" class="level3">
+<h3 class="anchored" data-anchor-id="quantile_backtest">quantile_backtest</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>quantile_backtest(y: pandas.core.series.Series, forecaster, exclude: pandas.core.series.Series <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>, levels<span class="op">=</span>array([<span class="fl">0.05</span>, <span class="fl">0.1</span> , <span class="fl">0.25</span>, <span class="fl">0.5</span> , <span class="fl">0.75</span>, <span class="fl">0.9</span> , <span class="fl">0.95</span>])) <span class="op">-&gt;</span> pandas.core.frame.DataFrame</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><em>Backtest a forecaster returning a (horizon, len(levels)) array; one row per scored hour, quantiles as columns.</em></p>
+</section>
+</div>
+<div id="19a40b1b" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:49.630329+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:49.634943+00:00&quot;,&quot;total&quot;:0.004616419000001315}}" data-execution_count="5">
+<hr>
+<p><a href="https://github.com/bthek1/ML_Timeseries/blob/main/ML_Timeseries/probabilistic.py#L30" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="coverage" class="level3">
+<h3 class="anchored" data-anchor-id="coverage">coverage</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> coverage(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    y, lo, hi</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">-&gt;</span><span class="bu">float</span>:</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><em>Share of outcomes inside [lo, hi].</em></p>
+</section>
+</div>
+<div id="6ade042f" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:49.635074+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:49.639818+00:00&quot;,&quot;total&quot;:0.004748847000001888}}" data-execution_count="6">
+<pre><code>/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/fastcore/docments.py:499: UserWarning: docments unavailable for crps: ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+  warnings.warn(f'docments unavailable for {self.nm}: {type(e).__name__}: {e}')</code></pre>
+<hr>
+<p><a href="https://github.com/bthek1/ML_Timeseries/blob/main/ML_Timeseries/probabilistic.py#L25" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="crps" class="level3">
+<h3 class="anchored" data-anchor-id="crps">crps</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>crps(y, Q, levels<span class="op">=</span>array([<span class="fl">0.05</span>, <span class="fl">0.1</span> , <span class="fl">0.25</span>, <span class="fl">0.5</span> , <span class="fl">0.75</span>, <span class="fl">0.9</span> , <span class="fl">0.95</span>])) <span class="op">-&gt;</span> <span class="bu">float</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><em>CRPS approximated by twice the mean pinball loss over the quantile <code>levels</code> (columns of <code>Q</code>).</em></p>
+</section>
+</div>
+<div id="5a1deffd" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:49.639985+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:49.644435+00:00&quot;,&quot;total&quot;:0.004456869000009078}}" data-execution_count="7">
+<hr>
+<p><a href="https://github.com/bthek1/ML_Timeseries/blob/main/ML_Timeseries/probabilistic.py#L19" target="_blank" style="float:right; font-size:smaller">source</a></p>
+<section id="pinball" class="level3">
+<h3 class="anchored" data-anchor-id="pinball">pinball</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> pinball(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    y, q, level:<span class="bu">float</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">-&gt;</span><span class="bu">float</span>:</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><em>Mean pinball (quantile) loss of quantile forecasts <code>q</code> at <code>level</code>.</em></p>
+</section>
+</div>
+</section>
+<section id="two-ways-to-get-quantiles" class="level2">
+<h2 class="anchored" data-anchor-id="two-ways-to-get-quantiles">2. Two ways to get quantiles</h2>
+<ul>
+<li><strong>Empirical seasonal quantiles</strong>: take the same hour of the week over the last <em>k</em> weeks and read off their quantiles. The probabilistic version of the <a href="../03_Classical/baselines.html">seasonal window</a> baseline.</li>
+<li><strong>Quantile regression</strong>: train one LightGBM model per level on the pinball loss, with the <a href="../01_Foundations/feature_engineering.html">shared features</a>. Each model learns its quantile as a function of the hour, the weekday and the recent level.</li>
+</ul>
+<hr>
+<div id="26418cd5" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-11-14T11:47:49.644941+00:00&quot;,&quot;shell.execute_reply&quot;:&quot;2026-11-14T11:47:51.168571+00:00&quot;,&quot;total&quot;:1.5236340809999973}}" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> lightgbm <span class="im">as</span> lgb</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> threadpoolctl <span class="im">import</span> threadpool_limits</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ML_Timeseries.backtest <span class="im">import</span> future_index</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ML_Timeseries.data <span class="im">import</span> line_chart, load_household, show</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ML_Timeseries.features <span class="im">import</span> make_features</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co"># nbdev-test runs pages in parallel; per-page OpenMP pools would oversubscribe the 4 cores.</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> threadpool_limits(<span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="c43a1d40" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>hh <span class="op">=</span> load_household()</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>y, FILLED <span class="op">=</span> hh[<span class="st">"kwh"</span>], hh[<span class="st">"filled"</span>]</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>train <span class="op">=</span> y.iloc[:origins(y.index)[<span class="dv">0</span>]]</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> empirical(weeks):</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> f(history, horizon):</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        x <span class="op">=</span> history.to_numpy()</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>        past <span class="op">=</span> np.stack([x[<span class="bu">len</span>(x) <span class="op">-</span> <span class="dv">168</span> <span class="op">*</span> k:<span class="bu">len</span>(x) <span class="op">-</span> <span class="dv">168</span> <span class="op">*</span> k <span class="op">+</span> horizon] <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">1</span>, weeks <span class="op">+</span> <span class="dv">1</span>)])</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> np.quantile(past, LEVELS, axis<span class="op">=</span><span class="dv">0</span>).T</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> f</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>X_train <span class="op">=</span> make_features(train).iloc[<span class="dv">700</span>:]</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>quantile_models <span class="op">=</span> {l: lgb.LGBMRegressor(objective<span class="op">=</span><span class="st">"quantile"</span>, alpha<span class="op">=</span>l, n_estimators<span class="op">=</span><span class="dv">300</span>, learning_rate<span class="op">=</span><span class="fl">0.05</span>,</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>                                        num_leaves<span class="op">=</span><span class="dv">31</span>, verbose<span class="op">=-</span><span class="dv">1</span>, n_jobs<span class="op">=</span><span class="dv">1</span>, random_state<span class="op">=</span><span class="dv">0</span>).fit(X_train, train.iloc[<span class="dv">700</span>:])</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>                   <span class="cf">for</span> l <span class="kw">in</span> LEVELS}</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> quantile_gbm(history, horizon):</span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>    ext <span class="op">=</span> pd.concat([history.iloc[<span class="op">-</span><span class="dv">800</span>:], pd.Series(np.nan, index<span class="op">=</span>future_index(history, horizon))])</span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>    X <span class="op">=</span> make_features(ext).iloc[<span class="op">-</span>horizon:]</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.column_stack([quantile_models[l].predict(X) <span class="cf">for</span> l <span class="kw">in</span> LEVELS])</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>methods <span class="op">=</span> {<span class="st">"empirical, 4 weeks"</span>: empirical(<span class="dv">4</span>), <span class="st">"empirical, 8 weeks"</span>: empirical(<span class="dv">8</span>), <span class="st">"quantile LightGBM"</span>: quantile_gbm}</span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>qbs <span class="op">=</span> {name: quantile_backtest(y, f, exclude<span class="op">=</span>FILLED) <span class="cf">for</span> name, f <span class="kw">in</span> methods.items()}</span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>prob <span class="op">=</span> pd.DataFrame({name: summarise(qb) <span class="cf">for</span> name, qb <span class="kw">in</span> qbs.items()}).T</span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>prob.style.<span class="bu">format</span>({<span class="st">"crps"</span>: <span class="st">"</span><span class="sc">{:.3f}</span><span class="st">"</span>, <span class="st">"median MAE"</span>: <span class="st">"</span><span class="sc">{:.3f}</span><span class="st">"</span>, <span class="st">"cover 90%"</span>: <span class="st">"</span><span class="sc">{:.1%}</span><span class="st">"</span>, <span class="st">"width 90%"</span>: <span class="st">"</span><span class="sc">{:.2f}</span><span class="st">"</span>,</span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"cover 80%"</span>: <span class="st">"</span><span class="sc">{:.1%}</span><span class="st">"</span>, <span class="st">"width 80%"</span>: <span class="st">"</span><span class="sc">{:.2f}</span><span class="st">"</span>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<style type="text/css">
+</style>
+
+<table id="T_c0e3b" class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th class="blank level0" data-quarto-table-cell-role="th">&nbsp;</th>
+<th id="T_c0e3b_level0_col0" class="col_heading level0 col0" data-quarto-table-cell-role="th">crps</th>
+<th id="T_c0e3b_level0_col1" class="col_heading level0 col1" data-quarto-table-cell-role="th">median MAE</th>
+<th id="T_c0e3b_level0_col2" class="col_heading level0 col2" data-quarto-table-cell-role="th">cover 90%</th>
+<th id="T_c0e3b_level0_col3" class="col_heading level0 col3" data-quarto-table-cell-role="th">width 90%</th>
+<th id="T_c0e3b_level0_col4" class="col_heading level0 col4" data-quarto-table-cell-role="th">cover 80%</th>
+<th id="T_c0e3b_level0_col5" class="col_heading level0 col5" data-quarto-table-cell-role="th">width 80%</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th id="T_c0e3b_level0_row0" class="row_heading level0 row0" data-quarto-table-cell-role="th">empirical, 4 weeks</th>
+<td id="T_c0e3b_row0_col0" class="data row0 col0">0.343</td>
+<td id="T_c0e3b_row0_col1" class="data row0 col1">0.501</td>
+<td id="T_c0e3b_row0_col2" class="data row0 col2">49.2%</td>
+<td id="T_c0e3b_row0_col3" class="data row0 col3">0.87</td>
+<td id="T_c0e3b_row0_col4" class="data row0 col4">44.0%</td>
+<td id="T_c0e3b_row0_col5" class="data row0 col5">0.77</td>
+</tr>
+<tr class="even">
+<th id="T_c0e3b_level0_row1" class="row_heading level0 row1" data-quarto-table-cell-role="th">empirical, 8 weeks</th>
+<td id="T_c0e3b_row1_col0" class="data row1 col0">0.310</td>
+<td id="T_c0e3b_row1_col1" class="data row1 col1">0.517</td>
+<td id="T_c0e3b_row1_col2" class="data row1 col2">63.9%</td>
+<td id="T_c0e3b_row1_col3" class="data row1 col3">1.20</td>
+<td id="T_c0e3b_row1_col4" class="data row1 col4">56.6%</td>
+<td id="T_c0e3b_row1_col5" class="data row1 col5">1.01</td>
+</tr>
+<tr class="odd">
+<th id="T_c0e3b_level0_row2" class="row_heading level0 row2" data-quarto-table-cell-role="th">quantile LightGBM</th>
+<td id="T_c0e3b_row2_col0" class="data row2 col0">0.243</td>
+<td id="T_c0e3b_row2_col1" class="data row2 col1">0.419</td>
+<td id="T_c0e3b_row2_col2" class="data row2 col2">86.3%</td>
+<td id="T_c0e3b_row2_col3" class="data row2 col3">1.56</td>
+<td id="T_c0e3b_row2_col4" class="data row2 col4">76.3%</td>
+<td id="T_c0e3b_row2_col5" class="data row2 col5">1.17</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Four weeks of history cannot make a 90% interval.</strong> The 5% and 95% quantiles of four values sit between the smallest and largest of them, so the “90%” band covers only about half the outcomes. Eight weeks helps but is still far off. An empirical quantile needs many samples per tail; this is the same small-sample problem that makes the 4-week median a fine <em>point</em> forecast and a poor <em>interval</em>.</p>
+<p><strong>Quantile regression comes close</strong>: its 90% interval covers 86% and its 80% interval 76%, a little narrow in both cases, with the best CRPS by a wide margin. It is slightly overconfident because each quantile model learned the spread of the training years, and the test months turn out a little more variable. The <a href="../07_Probabilistic/conformal_prediction.html">Conformal Prediction</a> page corrects exactly that.</p>
+<p>The CRPS ranks the three methods the same way as the median MAE, and it also rewards the quantile model’s calibration: two forecasts with similar medians can differ a lot in CRPS when one of them has honest tails.</p>
+<hr>
+</section>
+<section id="what-a-calibrated-band-looks-like" class="level2">
+<h2 class="anchored" data-anchor-id="what-a-calibrated-band-looks-like">3. What a calibrated band looks like</h2>
+<p>The last test window from quantile LightGBM: the median, the 90% band, and what happened. A good band is narrow at night, when the house is predictable, and wide in the evening, when it is not.</p>
+<hr>
+<div id="2c0e6adb" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>qb <span class="op">=</span> qbs[<span class="st">"quantile LightGBM"</span>]</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>last <span class="op">=</span> qb[qb.window <span class="op">==</span> qb.window.<span class="bu">max</span>()]</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>show(line_chart(last.index.strftime(<span class="st">"%a %H:00"</span>), {<span class="st">"actual"</span>: last.y, <span class="st">"5%"</span>: last[<span class="st">"q0.05"</span>], <span class="st">"median"</span>: last[<span class="st">"q0.5"</span>], <span class="st">"95%"</span>: last[<span class="st">"q0.95"</span>]},</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                y_name<span class="op">=</span><span class="st">"kWh"</span>, height<span class="op">=</span><span class="st">"340px"</span>, zoom<span class="op">=</span><span class="va">False</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+
+<script>
+    require.config({paths: {'echarts':'https://cdn.jsdelivr.net/gh/pyecharts/pyecharts-assets@f2328d558550046fc5449672a6850e848e141590/assets/v6/echarts.min'}});
+</script>
+
+        <div id="8e07e434b67f4b2f9ffb4af359c3fb3f" style="width:100%; height:340px;"></div>
+
+<script>
+        require(['echarts'], function(echarts) {var chart_8e07e434b67f4b2f9ffb4af359c3fb3f = echarts.init(
+                    document.getElementById('8e07e434b67f4b2f9ffb4af359c3fb3f'), 'white', {renderer: 'canvas', locale: 'ZH'});
+                var option_8e07e434b67f4b2f9ffb4af359c3fb3f = {"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0,"aria": {"enabled": false},"series": [{"type": "line","name": "actual","connectNulls": false,"xAxisIndex": 0,"symbolSize": 4,"showSymbol": false,"smooth": false,"clip": true,"step": false,"stackStrategy": "samesign","data": [["Thu 00:00",0.303],["Thu 01:00",0.29],["Thu 02:00",0.266],["Thu 03:00",0.336],["Thu 04:00",0.377],["Thu 05:00",0.881],["Thu 06:00",0.963],["Thu 07:00",2.627],["Thu 08:00",1.629],["Thu 09:00",1.258],["Thu 10:00",0.645],["Thu 11:00",1.028],["Thu 12:00",0.5],["Thu 13:00",0.356],["Thu 14:00",0.301],["Thu 15:00",0.333],["Thu 16:00",0.542],["Thu 17:00",1.48],["Thu 18:00",2.212],["Thu 19:00",2.33],["Thu 20:00",1.648],["Thu 21:00",1.343],["Thu 22:00",1.248],["Thu 23:00",0.957]],"hoverAnimation": true,"label": {"show": false,"margin": 8,"richInheritPlainLabel": true,"valueAnimation": false},"logBase": 10,"seriesLayoutBy": "column","lineStyle": {"show": false},"areaStyle": {"opacity": 0},"zlevel": 0,"z": 0},{"type": "line","name": "5%","connectNulls": false,"xAxisIndex": 0,"symbolSize": 4,"showSymbol": false,"smooth": false,"clip": true,"step": false,"stackStrategy": "samesign","data": [["Thu 00:00",0.309],["Thu 01:00",0.28],["Thu 02:00",0.29],["Thu 03:00",0.28],["Thu 04:00",0.299],["Thu 05:00",0.281],["Thu 06:00",0.407],["Thu 07:00",0.868],["Thu 08:00",0.72],["Thu 09:00",0.601],["Thu 10:00",0.544],["Thu 11:00",0.482],["Thu 12:00",0.38],["Thu 13:00",0.337],["Thu 14:00",0.363],["Thu 15:00",0.342],["Thu 16:00",0.336],["Thu 17:00",0.347],["Thu 18:00",0.67],["Thu 19:00",0.805],["Thu 20:00",0.933],["Thu 21:00",0.694],["Thu 22:00",0.491],["Thu 23:00",0.354]],"hoverAnimation": true,"label": {"show": false,"margin": 8,"richInheritPlainLabel": true,"valueAnimation": false},"logBase": 10,"seriesLayoutBy": "column","lineStyle": {"show": false},"areaStyle": {"opacity": 0},"zlevel": 0,"z": 0},{"type": "line","name": "median","connectNulls": false,"xAxisIndex": 0,"symbolSize": 4,"showSymbol": false,"smooth": false,"clip": true,"step": false,"stackStrategy": "samesign","data": [["Thu 00:00",0.542],["Thu 01:00",0.361],["Thu 02:00",0.368],["Thu 03:00",0.372],["Thu 04:00",0.422],["Thu 05:00",0.419],["Thu 06:00",1.061],["Thu 07:00",2.473],["Thu 08:00",2.064],["Thu 09:00",1.902],["Thu 10:00",1.743],["Thu 11:00",1.761],["Thu 12:00",1.539],["Thu 13:00",1.247],["Thu 14:00",1.304],["Thu 15:00",1.164],["Thu 16:00",1.055],["Thu 17:00",1.157],["Thu 18:00",1.722],["Thu 19:00",2.427],["Thu 20:00",2.469],["Thu 21:00",2.053],["Thu 22:00",1.132],["Thu 23:00",0.677]],"hoverAnimation": true,"label": {"show": false,"margin": 8,"richInheritPlainLabel": true,"valueAnimation": false},"logBase": 10,"seriesLayoutBy": "column","lineStyle": {"show": false},"areaStyle": {"opacity": 0},"zlevel": 0,"z": 0},{"type": "line","name": "95%","connectNulls": false,"xAxisIndex": 0,"symbolSize": 4,"showSymbol": false,"smooth": false,"clip": true,"step": false,"stackStrategy": "samesign","data": [["Thu 00:00",1.599],["Thu 01:00",0.854],["Thu 02:00",0.921],["Thu 03:00",0.903],["Thu 04:00",0.888],["Thu 05:00",0.841],["Thu 06:00",1.833],["Thu 07:00",2.769],["Thu 08:00",2.832],["Thu 09:00",2.45],["Thu 10:00",2.524],["Thu 11:00",2.661],["Thu 12:00",2.362],["Thu 13:00",2.129],["Thu 14:00",2.053],["Thu 15:00",2.771],["Thu 16:00",2.801],["Thu 17:00",2.865],["Thu 18:00",3.223],["Thu 19:00",3.617],["Thu 20:00",3.581],["Thu 21:00",2.975],["Thu 22:00",2.328],["Thu 23:00",1.845]],"hoverAnimation": true,"label": {"show": false,"margin": 8,"richInheritPlainLabel": true,"valueAnimation": false},"logBase": 10,"seriesLayoutBy": "column","lineStyle": {"show": false},"areaStyle": {"opacity": 0},"zlevel": 0,"z": 0}],"legend": [{"data": ["actual","5%","median","95%"],"selected": {},"show": true,"top": "0","padding": 5,"itemGap": 10,"itemWidth": 25,"itemHeight": 14,"backgroundColor": "transparent","borderColor": "#ccc","borderRadius": 0,"pageButtonItemGap": 5,"pageButtonPosition": "end","pageFormatter": "{current}/{total}","pageIconColor": "#2f4554","pageIconInactiveColor": "#aaa","pageIconSize": 15,"animationDurationUpdate": 800,"selector": false,"selectorPosition": "auto","selectorItemGap": 7,"selectorButtonGap": 10,"triggerEvent": false}],"tooltip": {"show": true,"trigger": "axis","triggerOn": "mousemove|click","axisPointer": {"type": "line"},"showContent": true,"alwaysShowContent": false,"showDelay": 0,"hideDelay": 100,"enterable": false,"confine": false,"appendToBody": false,"transitionDuration": 0.4,"displayTransition": true,"textStyle": {"fontSize": 14,"richInheritPlainLabel": true},"borderWidth": 0,"padding": 5,"order": "seriesAsc"},"xAxis": [{"show": true,"scale": false,"nameLocation": "end","nameGap": 15,"nameTruncate": {},"nameMoveOverlap": true,"inverse": false,"offset": 0,"splitNumber": 5,"minInterval": 0,"silent": false,"triggerEvent": false,"splitLine": {"show": true,"lineStyle": {"show": false}},"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0,"data": ["Thu 00:00","Thu 01:00","Thu 02:00","Thu 03:00","Thu 04:00","Thu 05:00","Thu 06:00","Thu 07:00","Thu 08:00","Thu 09:00","Thu 10:00","Thu 11:00","Thu 12:00","Thu 13:00","Thu 14:00","Thu 15:00","Thu 16:00","Thu 17:00","Thu 18:00","Thu 19:00","Thu 20:00","Thu 21:00","Thu 22:00","Thu 23:00"]}],"yAxis": [{"name": "kWh","show": true,"scale": false,"nameLocation": "end","nameGap": 15,"nameTruncate": {},"nameMoveOverlap": true,"inverse": false,"offset": 0,"splitNumber": 5,"minInterval": 0,"silent": false,"triggerEvent": false,"splitLine": {"show": true,"lineStyle": {"show": false}},"animation": true,"animationThreshold": 2000,"animationDuration": 1000,"animationEasing": "cubicOut","animationDelay": 0,"animationDurationUpdate": 300,"animationEasingUpdate": "cubicOut","animationDelayUpdate": 0}],"title": [{"show": true,"target": "blank","subtarget": "blank","padding": 5,"itemGap": 10,"textAlign": "auto","textVerticalAlign": "auto","triggerEvent": false}],"grid": {"show": false,"zlevel": 0,"z": 2,"left": "50px","top": "70px","right": "20px","containLabel": false,"backgroundColor": "transparent","borderColor": "#ccc","borderWidth": 1,"shadowOffsetX": 0,"shadowOffsetY": 0}};
+                chart_8e07e434b67f4b2f9ffb4af359c3fb3f.setOption(option_8e07e434b67f4b2f9ffb4af359c3fb3f);});
+    </script>
+</div>
+</div>
+<div id="053372d5" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>by_hour <span class="op">=</span> qb.assign(width<span class="op">=</span>qb[<span class="st">"q0.95"</span>] <span class="op">-</span> qb[<span class="st">"q0.05"</span>]).groupby(qb.index.hour).width.mean()</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"mean 90% width: </span><span class="sc">{</span>by_hour<span class="sc">.</span>loc[[<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">4</span>]]<span class="sc">.</span>mean()<span class="sc">:.2f}</span><span class="ss"> kWh at 02:00-04:00, </span><span class="sc">{</span>by_hour<span class="sc">.</span>loc[[<span class="dv">18</span>, <span class="dv">19</span>, <span class="dv">20</span>]]<span class="sc">.</span>mean()<span class="sc">:.2f}</span><span class="ss"> kWh at 18:00-20:00"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>mean 90% width: 0.67 kWh at 02:00-04:00, 2.19 kWh at 18:00-20:00</code></pre>
+</div>
+</div>
+
+
+</section>
+
+<a onclick="window.scrollTo(0, 0); return false;" role="button" id="quarto-back-to-top"><i class="bi bi-arrow-up"></i> Back to top</a></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const toggle = window.document.createElement('button');
+      toggle.type = "button";
+      toggle.setAttribute("role", "switch");
+      toggle.setAttribute("aria-checked", "false");
+      toggle.classList.add('top-right');
+      toggle.classList.add('quarto-color-scheme-toggle');
+      toggle.setAttribute("aria-label", "Toggle dark mode");
+      toggle.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      toggle.appendChild(i);
+      // Put the toggle in a landmark of its own, so that landmark navigation
+      // can reach it.
+      //
+      // The container is always a fresh direct child of body, and the toggle is
+      // never moved into page furniture that the theme or the author controls.
+      // The toggle is positioned against the page, so any ancestor that
+      // establishes a containing block captures it: a positioned element or a
+      // grid for position: absolute, and transform, filter, will-change or
+      // contain for position: fixed. A direct child of body has none of these
+      // to inherit, and the shift when one appears is silent and visual.
+      //
+      // ARIA says a document should have at most one banner, and axe reports a
+      // duplicate whether or not the banners carry distinct labels. So use a
+      // header when the page has no banner yet, and a named region otherwise.
+      //
+      // A header is a banner wherever it sits, unless it is inside sectioning
+      // content, so this cannot just look at the children of body: a custom
+      // page layout wraps the title block header in a plain div. An explicit
+      // role="banner" always counts.
+      const sectioning = 'article, aside, main, nav, section, [role="article"], [role="complementary"], [role="main"], [role="navigation"], [role="region"]';
+      const hasBanner = Array.from(
+        window.document.querySelectorAll('header:not([role]), [role="banner"]')
+      ).some(function(el) {
+        return el.hasAttribute("role") || el.closest(sectioning) === null;
+      });
+      const container = window.document.createElement(hasBanner ? "div" : "header");
+      if (hasBanner) {
+        container.setAttribute("role", "region");
+        container.setAttribute("aria-label", "Toggle dark mode");
+      }
+      container.classList.add('quarto-color-scheme-toggle-container');
+      container.appendChild(toggle);
+      window.document.body.appendChild(container);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/bthek1\.github\.io\/ML_Timeseries");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+          if (!link.classList.contains('no-external-icon')) {
+          }
+        }
+      }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
+          if (lineIds.length > 0) {
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            placeBand(gutterDiv, el, lastEl);
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+<script src="https://utteranc.es/client.js" repo="quarto-dev/quarto-web" issue-term="pathname" theme="github-light" crossorigin="anonymous" async="">
+</script>
+<nav class="page-navigation" aria-label="Page">
+  <div class="nav-page nav-page-previous">
+      <a href="../06_Foundation_Models/small_models_on_cpu.html" class="pagination-link" aria-label="Small Models on CPU">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Small Models on CPU</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../07_Probabilistic/conformal_prediction.html" class="pagination-link" aria-label="Conformal Prediction">
+        <span class="nav-page-text">Conformal Prediction</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link active" href="../index.html" aria-current="page">
+<p>Trademark</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/bthek1/ML_Timeseries/issues">
+<p>FAQ</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://bthek1.github.io/bthek1_blog/index.html">
+<p>License</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="../index.html">
+<p>Trademark</p>
+</a>
+  </li>  
+</ul>
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.dev/bthek1/ML_Timeseries/blob/main/07_Probabilistic/01_Probabilistic_Forecasting.ipynb" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/bthek1/ML_Timeseries/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/bthek1/ML_Timeseries">
+      <i class="bi bi-github" role="img" aria-label="Github">
+</i> 
+    </a>
+  </li>  
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/benedict-thekkel/">
+      <i class="bi bi-linkedin" role="img" aria-label="Linkedin">
+</i> 
+    </a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

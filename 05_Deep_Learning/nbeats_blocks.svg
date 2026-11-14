@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 260" width="780" height="260" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>N-BEATS doubly residual stacking: each block subtracts its backcast from the input passed on, and its forecast is added to the total</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#888"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="#888" stroke-width="1.5">
+    <path d="M75 80 H120" marker-end="url(#a)"/>
+    <path d="M230 80 H340" marker-end="url(#a)"/>
+    <path d="M450 80 H560" marker-end="url(#a)"/>
+    <path d="M175 105 V190 H660" marker-end="url(#a)"/>
+    <path d="M395 105 V190"/>
+    <path d="M615 105 V190"/>
+  </g>
+  <g fill="#4c78a8">
+    <rect x="120" y="55" width="110" height="50" rx="6"/>
+    <rect x="340" y="55" width="110" height="50" rx="6"/>
+    <rect x="560" y="55" width="110" height="50" rx="6"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-weight="bold">
+    <text x="175" y="85">block 1</text>
+    <text x="395" y="85">block 2</text>
+    <text x="615" y="85">block 3 ...</text>
+  </g>
+  <g fill="#888">
+    <text x="15" y="76">input</text>
+    <text x="15" y="92">window</text>
+    <text x="285" y="54" text-anchor="middle">input minus</text>
+    <text x="285" y="70" text-anchor="middle">backcast 1</text>
+    <text x="505" y="54" text-anchor="middle">residual minus</text>
+    <text x="505" y="70" text-anchor="middle">backcast 2</text>
+    <text x="183" y="150">forecast 1</text>
+    <text x="403" y="150">forecast 2</text>
+    <text x="623" y="150">forecast 3</text>
+    <text x="668" y="186">final</text>
+    <text x="668" y="202">forecast (sum)</text>
+    <text x="15" y="245">Each block explains part of what it receives and passes on only the rest; the forecasts add up.</text>
+  </g>
+  <g fill="#f58518">
+    <circle cx="395" cy="190" r="4"/>
+    <circle cx="615" cy="190" r="4"/>
+  </g>
+</svg>
