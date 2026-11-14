@@ -5,7 +5,7 @@
 
 This site is organised around one concrete problem. The problem is household energy: given hourly meter readings, forecast consumption, detect anomalies, and work out which appliances are running from the total draw alone. [Phisaver Project](000_core.ipynb) states that brief.
 
-The site is being restructured into a curriculum that follows the field’s topic map (plan: [Knowledge \#28](https://github.com/bthek1/Knowledge/issues/28)). Each section covers one family of methods, from classical statistics to pretrained foundation models. The original library walkthroughs (Darts, Nixtla) stay as API references under Libraries.
+The site is a curriculum that follows the field’s topic map (plan: [Knowledge \#28](https://github.com/bthek1/Knowledge/issues/28)). Each section covers one family of methods, from free baselines to pretrained foundation models. The original library walkthroughs (Darts, Nixtla) stay as API references under Libraries.
 
 ------------------------------------------------------------------------
 
@@ -18,6 +18,25 @@ Three choices make the pages comparable:
 3.  **One scoreboard.** Every forecasting notebook adds a row to a shared results table, so the gain of each method is a number on the same scale ([Scoreboard](02_Evaluation/03_Scoreboard.ipynb)).
 
 The notebooks run on a small machine (4 CPU cores, 8 GB RAM, 12 GB GPU). Pages that run on CPU in a few minutes execute in CI on every push; GPU pages store their outputs.
+
+------------------------------------------------------------------------
+
+## What the scoreboard says
+
+Skill is the share of seasonal naive’s error a model removes on the same 30 day-ahead windows ([Scoreboard](02_Evaluation/03_Scoreboard.ipynb), 14 November 2026).
+
+| Model                                 | Family           | Skill |
+|---------------------------------------|------------------|-------|
+| N-BEATS written from scratch, 3 seeds | deep learning    | +24%  |
+| TiRex, zero-shot (no training)        | foundation model | +24%  |
+| Small MLP, one-week lookback, 3 seeds | deep learning    | +23%  |
+| Chronos-2, zero-shot                  | foundation model | +22%  |
+| Chronos-Bolt tiny on one CPU thread   | foundation model | +20%  |
+| Gradient boosting, one model per hour | machine learning | +18%  |
+| SARIMA                                | classical        | +17%  |
+| Four-week seasonal window             | free baseline    | +4%   |
+
+Three lessons recur across the sections. How a model is fitted and fed matters more than its architecture (Holt-Winters goes from -13% to +12% by fitting for the right horizon). Pretrained models now beat everything built for one series, unless they have seen the test data, which [one of them](06_Foundation_Models/02_Foundation_Model_Comparison.ipynb) appears to have. And most of an hour in a household is unpredictable: the best model removes about a quarter of the simplest model’s error.
 
 ------------------------------------------------------------------------
 
@@ -180,9 +199,14 @@ The FFT forecasting, electricity load and demand peak pages moved to [Electrical
 
 ## Not Covered Yet
 
-Stated plainly, so the gaps are not mistaken for oversights. Most are scheduled in [Knowledge \#28](https://github.com/bthek1/Knowledge/issues/28):
+Stated plainly, so the gaps are not mistaken for oversights:
 
-- **Appliance disaggregation**: recovering per-appliance draw from the total signal. The household dataset’s sub-meters make it possible, but no page attempts it and the plan does not schedule it.
-- **Phisaver’s own data**: it is private, so no page here uses it.
+- **Appliance disaggregation**: recovering per-appliance draw from the total signal. The household dataset’s sub-meters make it possible, but no page attempts it.
+- **Phisaver’s own data**: it is private, so no page here uses it. It would also be the clean test for foundation models, which may have seen this public dataset.
+- **Newer foundation models**: TimesFM-3, Toto-2.0 and TiRex-2 lead GIFT-Eval but are not tested here; Moirai and IBM’s TTM cannot be installed in this environment without downgrades.
+- **Weather and other covariates**: no page uses temperature, which drives heating load; every covariate tried (calendar, sub-meters) added nothing over the target’s own history.
+- **Probabilistic scoring of the deep and foundation models**: DeepAR, Chronos-2 and TiRex produce quantiles, but only quantile LightGBM and the conformal methods are scored on coverage and CRPS.
+- **Change points on forecast residuals**, and **TFT attention explanations**, both proposed on their pages and not run.
+- **A winter test period**: the backtest covers late June to late November 2010, so every score here is a summer-into-autumn score.
 
 ------------------------------------------------------------------------

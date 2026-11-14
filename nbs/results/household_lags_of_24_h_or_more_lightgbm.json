@@ -10,5 +10,5 @@
  "rmse": 0.6201,
  "wape": 0.4851,
  "smape": 0.4838,
- "seconds": 0.2
+ "seconds": 0.1
 }
