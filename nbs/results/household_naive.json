@@ -1,0 +1,14 @@
+{
+ "model": "Naive",
+ "family": "baseline",
+ "dataset": "household",
+ "notebook": "03_Classical/01_Baselines",
+ "notes": "",
+ "mase": 0.9313,
+ "skill": -0.157,
+ "mae": 0.6046,
+ "rmse": 0.8569,
+ "wape": 0.6676,
+ "smape": 0.6167,
+ "seconds": 0.0
+}

@@ -1,0 +1,14 @@
+{
+ "model": "Seasonal window median (4 weeks)",
+ "family": "baseline",
+ "dataset": "household",
+ "notebook": "03_Classical/01_Baselines",
+ "notes": "",
+ "mase": 0.7636,
+ "skill": 0.0403,
+ "mae": 0.5015,
+ "rmse": 0.7146,
+ "wape": 0.5537,
+ "smape": 0.5504,
+ "seconds": 0.0
+}

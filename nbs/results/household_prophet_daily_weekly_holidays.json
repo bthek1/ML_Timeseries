@@ -1,0 +1,14 @@
+{
+ "model": "Prophet (daily + weekly + holidays)",
+ "family": "classical",
+ "dataset": "household",
+ "notebook": "03_Classical/08_Prophet",
+ "notes": "",
+ "mase": 0.7656,
+ "skill": 0.0391,
+ "mae": 0.5021,
+ "rmse": 0.6683,
+ "wape": 0.5545,
+ "smape": 0.5704,
+ "seconds": 8.7
+}

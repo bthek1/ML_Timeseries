@@ -1,0 +1,14 @@
+{
+ "model": "Chronos-2, zero-shot",
+ "family": "foundation model",
+ "dataset": "household",
+ "notebook": "06_Foundation_Models/01_Chronos2_Zero_Shot",
+ "notes": "no training; 2,048 h context",
+ "mase": 0.6445,
+ "skill": 0.2174,
+ "mae": 0.4089,
+ "rmse": 0.6313,
+ "wape": 0.4516,
+ "smape": 0.4232,
+ "seconds": 0.9
+}

@@ -1,0 +1,14 @@
+{
+ "model": "Lags of 24 h or more (LightGBM)",
+ "family": "machine learning",
+ "dataset": "household",
+ "notebook": "04_Machine_Learning/02_Multistep_Strategies",
+ "notes": "",
+ "mase": 0.6694,
+ "skill": 0.1592,
+ "mae": 0.4393,
+ "rmse": 0.6201,
+ "wape": 0.4851,
+ "smape": 0.4838,
+ "seconds": 0.2
+}

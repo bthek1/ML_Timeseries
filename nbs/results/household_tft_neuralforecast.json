@@ -1,0 +1,14 @@
+{
+ "model": "TFT (neuralforecast)",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/04_Transformers",
+ "notes": "",
+ "mase": 0.638,
+ "skill": 0.2044,
+ "mae": 0.4157,
+ "rmse": 0.6178,
+ "wape": 0.4591,
+ "smape": 0.4384,
+ "seconds": 152.5
+}

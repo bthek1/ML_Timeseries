@@ -1,0 +1,14 @@
+{
+ "model": "TiDE (neuralforecast)",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/03_MLP_Family",
+ "notes": "",
+ "mase": 0.6492,
+ "skill": 0.1888,
+ "mae": 0.4239,
+ "rmse": 0.6328,
+ "wape": 0.4681,
+ "smape": 0.4592,
+ "seconds": 6.2
+}

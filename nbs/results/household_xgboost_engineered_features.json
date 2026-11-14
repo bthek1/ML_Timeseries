@@ -1,0 +1,14 @@
+{
+ "model": "XGBoost, engineered features",
+ "family": "machine learning",
+ "dataset": "household",
+ "notebook": "04_Machine_Learning/05_XGBoost_Energy",
+ "notes": "",
+ "mase": 0.6631,
+ "skill": 0.1751,
+ "mae": 0.4311,
+ "rmse": 0.6204,
+ "wape": 0.476,
+ "smape": 0.4618,
+ "seconds": 0.4
+}

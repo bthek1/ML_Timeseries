@@ -1,0 +1,14 @@
+{
+ "model": "Recursive (LightGBM)",
+ "family": "machine learning",
+ "dataset": "household",
+ "notebook": "04_Machine_Learning/02_Multistep_Strategies",
+ "notes": "",
+ "mase": 0.7261,
+ "skill": 0.0917,
+ "mae": 0.4746,
+ "rmse": 0.6466,
+ "wape": 0.5241,
+ "smape": 0.5188,
+ "seconds": 2.8
+}

@@ -1,0 +1,14 @@
+{
+ "model": "Ridge, 336 h window to 24 h (MIMO)",
+ "family": "machine learning",
+ "dataset": "household",
+ "notebook": "04_Machine_Learning/01_Forecasting_as_Regression",
+ "notes": "",
+ "mase": 0.7008,
+ "skill": 0.1243,
+ "mae": 0.4576,
+ "rmse": 0.6371,
+ "wape": 0.5053,
+ "smape": 0.5111,
+ "seconds": 0.0
+}

@@ -12,7 +12,7 @@ license = {text = "Apache-2.0"}
 authors = [{name = "main", email = "bthekkel1@gmail.com"}]
 keywords = ['nbdev', 'jupyter', 'notebook', 'python']
 classifiers = ["Natural Language :: English", "Intended Audience :: Developers", "Development Status :: 3 - Alpha", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only"]
-dependencies = []
+dependencies = ["numpy", "pandas", "pyarrow", "pyecharts", "arch", "lightgbm", "mlforecast", "numba", "prophet", "ruptures", "scikit-learn", "sktime", "statsmodels", "stumpy", "threadpoolctl", "xgboost"]
 
 [project.urls]
 Repository = "https://github.com/bthek1/ML_Timeseries"

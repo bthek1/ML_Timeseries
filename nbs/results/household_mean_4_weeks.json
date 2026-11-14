@@ -1,0 +1,14 @@
+{
+ "model": "Mean (4 weeks)",
+ "family": "baseline",
+ "dataset": "household",
+ "notebook": "03_Classical/01_Baselines",
+ "notes": "",
+ "mase": 0.8427,
+ "skill": -0.0586,
+ "mae": 0.5532,
+ "rmse": 0.7016,
+ "wape": 0.6108,
+ "smape": 0.6243,
+ "seconds": 0.0
+}

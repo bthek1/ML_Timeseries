@@ -1,0 +1,14 @@
+{
+ "model": "Theta (24 h season)",
+ "family": "classical",
+ "dataset": "household",
+ "notebook": "03_Classical/04_Theta_Intermittent",
+ "notes": "",
+ "mase": 0.8308,
+ "skill": -0.0442,
+ "mae": 0.5457,
+ "rmse": 0.8541,
+ "wape": 0.6025,
+ "smape": 0.5571,
+ "seconds": 1.5
+}

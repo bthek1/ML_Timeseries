@@ -1,0 +1,14 @@
+{
+ "model": "N-BEATS from scratch (PyTorch), 3-seed ensemble",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/05_NBEATS_From_Scratch",
+ "notes": "",
+ "mase": 0.607,
+ "skill": 0.2434,
+ "mae": 0.3954,
+ "rmse": 0.5965,
+ "wape": 0.4366,
+ "smape": 0.434,
+ "seconds": 8.4
+}

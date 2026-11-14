@@ -1,0 +1,10 @@
+{
+ "model": "LightGBM, global (diff 24 + scaler)",
+ "family": "machine learning",
+ "dataset": "m4_hourly",
+ "notebook": "04_Machine_Learning/03_Global_vs_Local",
+ "notes": "",
+ "mase": 0.8867,
+ "smape": 11.6764,
+ "seconds": 49.8
+}

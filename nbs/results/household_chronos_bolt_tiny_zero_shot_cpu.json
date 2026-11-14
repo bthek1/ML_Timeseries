@@ -1,0 +1,10 @@
+{
+ "model": "Chronos-Bolt tiny, zero-shot (CPU)",
+ "family": "foundation model",
+ "dataset": "household",
+ "notebook": "06_Foundation_Models/04_Small_Models_on_CPU",
+ "notes": "9 M parameters, one CPU thread",
+ "mase": 0.6435,
+ "skill": 0.1979,
+ "seconds": 0.4
+}

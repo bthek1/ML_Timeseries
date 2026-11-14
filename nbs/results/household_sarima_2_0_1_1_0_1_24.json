@@ -1,0 +1,14 @@
+{
+ "model": "SARIMA (2,0,1)(1,0,1)24",
+ "family": "classical",
+ "dataset": "household",
+ "notebook": "03_Classical/03_ARIMA",
+ "notes": "order by AIC on the 3 weeks before the test; refit on 3 weeks per window",
+ "mase": 0.6696,
+ "skill": 0.172,
+ "mae": 0.4327,
+ "rmse": 0.6203,
+ "wape": 0.4778,
+ "smape": 0.4696,
+ "seconds": 50.1
+}

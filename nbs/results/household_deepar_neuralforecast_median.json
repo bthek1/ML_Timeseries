@@ -1,0 +1,14 @@
+{
+ "model": "DeepAR (neuralforecast, median)",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/02_RNN_LSTM_DeepAR",
+ "notes": "",
+ "mase": 0.6408,
+ "skill": 0.2035,
+ "mae": 0.4162,
+ "rmse": 0.6189,
+ "wape": 0.4596,
+ "smape": 0.4439,
+ "seconds": 75.1
+}

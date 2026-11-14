@@ -1,0 +1,14 @@
+{
+ "model": "Gradient boosting, 336 h window to 24 h (one model per hour)",
+ "family": "machine learning",
+ "dataset": "household",
+ "notebook": "04_Machine_Learning/01_Forecasting_as_Regression",
+ "notes": "",
+ "mase": 0.6549,
+ "skill": 0.1806,
+ "mae": 0.4282,
+ "rmse": 0.6128,
+ "wape": 0.4728,
+ "smape": 0.464,
+ "seconds": 0.8
+}

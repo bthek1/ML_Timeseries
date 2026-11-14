@@ -1,0 +1,14 @@
+{
+ "model": "LSTM (neuralforecast)",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/02_RNN_LSTM_DeepAR",
+ "notes": "",
+ "mase": 0.6465,
+ "skill": 0.1988,
+ "mae": 0.4187,
+ "rmse": 0.6298,
+ "wape": 0.4623,
+ "smape": 0.4443,
+ "seconds": 12.1
+}

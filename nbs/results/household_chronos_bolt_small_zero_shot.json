@@ -1,0 +1,14 @@
+{
+ "model": "Chronos-Bolt (small), zero-shot",
+ "family": "foundation model",
+ "dataset": "household",
+ "notebook": "06_Foundation_Models/02_Foundation_Model_Comparison",
+ "notes": "no training; 2,048 h context",
+ "mase": 0.6418,
+ "skill": 0.2031,
+ "mae": 0.4164,
+ "rmse": 0.6333,
+ "wape": 0.4599,
+ "smape": 0.4393,
+ "seconds": 0.3
+}

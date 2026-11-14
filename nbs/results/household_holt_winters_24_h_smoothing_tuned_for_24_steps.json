@@ -1,0 +1,14 @@
+{
+ "model": "Holt-Winters (24 h), smoothing tuned for 24 steps",
+ "family": "classical",
+ "dataset": "household",
+ "notebook": "03_Classical/02_ETS",
+ "notes": "alpha 0.005, gamma 0.05, chosen on validation windows",
+ "mase": 0.7002,
+ "skill": 0.123,
+ "mae": 0.4583,
+ "rmse": 0.6299,
+ "wape": 0.506,
+ "smape": 0.5122,
+ "seconds": 0.3
+}

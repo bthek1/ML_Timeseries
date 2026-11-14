@@ -1,0 +1,14 @@
+{
+ "model": "Seasonal naive (168 h)",
+ "family": "baseline",
+ "dataset": "household",
+ "notebook": "03_Classical/01_Baselines",
+ "notes": "",
+ "mase": 0.8414,
+ "skill": -0.0453,
+ "mae": 0.5462,
+ "rmse": 0.8096,
+ "wape": 0.6032,
+ "smape": 0.5534,
+ "seconds": 0.0
+}

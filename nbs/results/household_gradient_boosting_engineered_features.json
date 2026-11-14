@@ -1,0 +1,14 @@
+{
+ "model": "Gradient boosting, engineered features",
+ "family": "machine learning",
+ "dataset": "household",
+ "notebook": "01_Foundations/03_Feature_Engineering",
+ "notes": "lags + calendar, fourier, rolling",
+ "mase": 0.6647,
+ "skill": 0.1704,
+ "mae": 0.4335,
+ "rmse": 0.6162,
+ "wape": 0.4787,
+ "smape": 0.4702,
+ "seconds": 2.1
+}

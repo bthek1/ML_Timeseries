@@ -1,0 +1,14 @@
+{
+ "model": "TiRex, zero-shot",
+ "family": "foundation model",
+ "dataset": "household",
+ "notebook": "06_Foundation_Models/02_Foundation_Model_Comparison",
+ "notes": "no training; 2,048 h context",
+ "mase": 0.6232,
+ "skill": 0.2363,
+ "mae": 0.3991,
+ "rmse": 0.6169,
+ "wape": 0.4407,
+ "smape": 0.4161,
+ "seconds": 4.9
+}

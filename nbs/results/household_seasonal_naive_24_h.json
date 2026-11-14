@@ -1,0 +1,14 @@
+{
+ "model": "Seasonal naive (24 h)",
+ "family": "baseline",
+ "dataset": "household",
+ "notebook": "02_Evaluation/00_Backtesting",
+ "notes": "",
+ "mase": 0.8157,
+ "skill": 0.0,
+ "mae": 0.5225,
+ "rmse": 0.809,
+ "wape": 0.577,
+ "smape": 0.5008,
+ "seconds": 0.0
+}

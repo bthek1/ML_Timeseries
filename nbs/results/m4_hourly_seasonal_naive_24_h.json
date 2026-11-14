@@ -1,0 +1,10 @@
+{
+ "model": "Seasonal naive (24 h)",
+ "family": "baseline",
+ "dataset": "m4_hourly",
+ "notebook": "02_Evaluation/02_Benchmarks",
+ "notes": "",
+ "mase": 1.1932,
+ "smape": 13.9123,
+ "skill": 0.0
+}

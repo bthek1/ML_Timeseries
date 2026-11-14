@@ -1,0 +1,14 @@
+{
+ "model": "Drift (4 weeks)",
+ "family": "baseline",
+ "dataset": "household",
+ "notebook": "03_Classical/01_Baselines",
+ "notes": "",
+ "mase": 0.9408,
+ "skill": -0.1692,
+ "mae": 0.6109,
+ "rmse": 0.8645,
+ "wape": 0.6746,
+ "smape": 0.6262,
+ "seconds": 0.0
+}

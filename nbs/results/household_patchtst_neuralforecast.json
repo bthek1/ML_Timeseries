@@ -1,0 +1,14 @@
+{
+ "model": "PatchTST (neuralforecast)",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/04_Transformers",
+ "notes": "",
+ "mase": 0.6484,
+ "skill": 0.194,
+ "mae": 0.4212,
+ "rmse": 0.6255,
+ "wape": 0.4651,
+ "smape": 0.4541,
+ "seconds": 68.7
+}

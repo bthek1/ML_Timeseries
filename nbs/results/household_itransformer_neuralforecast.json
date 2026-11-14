@@ -1,0 +1,14 @@
+{
+ "model": "iTransformer (neuralforecast)",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/04_Transformers",
+ "notes": "",
+ "mase": 0.6649,
+ "skill": 0.1698,
+ "mae": 0.4338,
+ "rmse": 0.6424,
+ "wape": 0.479,
+ "smape": 0.4774,
+ "seconds": 6.2
+}

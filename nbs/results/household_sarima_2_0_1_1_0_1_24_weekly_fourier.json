@@ -1,0 +1,14 @@
+{
+ "model": "SARIMA (2,0,1)(1,0,1)24 + weekly Fourier",
+ "family": "classical",
+ "dataset": "household",
+ "notebook": "03_Classical/03_ARIMA",
+ "notes": "4 Fourier pairs at 168 h as regressors",
+ "mase": 0.6953,
+ "skill": 0.1396,
+ "mae": 0.4496,
+ "rmse": 0.6422,
+ "wape": 0.4965,
+ "smape": 0.4963,
+ "seconds": 69.2
+}

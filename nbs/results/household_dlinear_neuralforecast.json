@@ -1,0 +1,14 @@
+{
+ "model": "DLinear (neuralforecast)",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/03_MLP_Family",
+ "notes": "",
+ "mase": 0.6829,
+ "skill": 0.1465,
+ "mae": 0.446,
+ "rmse": 0.642,
+ "wape": 0.4925,
+ "smape": 0.4877,
+ "seconds": 2.5
+}

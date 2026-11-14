@@ -1,0 +1,14 @@
+{
+ "model": "Holt-Winters (24 h), default fit",
+ "family": "classical",
+ "dataset": "household",
+ "notebook": "03_Classical/02_ETS",
+ "notes": "",
+ "mase": 0.9001,
+ "skill": -0.1338,
+ "mae": 0.5925,
+ "rmse": 0.8222,
+ "wape": 0.6542,
+ "smape": 0.7444,
+ "seconds": 2.3
+}

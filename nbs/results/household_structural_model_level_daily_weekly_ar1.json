@@ -1,0 +1,14 @@
+{
+ "model": "Structural model (level + daily + weekly + AR1)",
+ "family": "classical",
+ "dataset": "household",
+ "notebook": "03_Classical/05_State_Space_Kalman",
+ "notes": "",
+ "mase": 0.7331,
+ "skill": 0.0941,
+ "mae": 0.4734,
+ "rmse": 0.6717,
+ "wape": 0.5227,
+ "smape": 0.5181,
+ "seconds": 37.7
+}

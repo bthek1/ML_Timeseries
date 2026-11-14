@@ -1,0 +1,14 @@
+{
+ "model": "N-HiTS (neuralforecast)",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/03_MLP_Family",
+ "notes": "",
+ "mase": 0.6764,
+ "skill": 0.1533,
+ "mae": 0.4424,
+ "rmse": 0.6602,
+ "wape": 0.4886,
+ "smape": 0.4695,
+ "seconds": 8.4
+}

@@ -1,0 +1,14 @@
+{
+ "model": "Direct (24 LightGBM models)",
+ "family": "machine learning",
+ "dataset": "household",
+ "notebook": "04_Machine_Learning/02_Multistep_Strategies",
+ "notes": "",
+ "mase": 0.6612,
+ "skill": 0.1722,
+ "mae": 0.4325,
+ "rmse": 0.6041,
+ "wape": 0.4776,
+ "smape": 0.4763,
+ "seconds": 1.1
+}

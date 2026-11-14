@@ -1,0 +1,14 @@
+{
+ "model": "MLP (PyTorch), instance norm, 168 h lookback",
+ "family": "deep learning",
+ "dataset": "household",
+ "notebook": "05_Deep_Learning/01_DL_Data_Pipeline",
+ "notes": "",
+ "mase": 0.6288,
+ "skill": 0.2178,
+ "mae": 0.4087,
+ "rmse": 0.6228,
+ "wape": 0.4514,
+ "smape": 0.4401,
+ "seconds": 0.6
+}
